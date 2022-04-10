@@ -1,0 +1,19 @@
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_path")
+
+gazelle_binary(
+    name = "gazelle-protobuf",
+    languages = [
+        "@bazel_gazelle//language/go",
+        "@bazel_gazelle//language/proto",
+        # must be after the proto extension (order matters)
+        "@build_stack_rules_proto//language/protobuf",
+    ],
+)
+
+# gazelle:prefix github.com/gonzojive/bazelgopackagesdriver
+
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle-protobuf",
+)

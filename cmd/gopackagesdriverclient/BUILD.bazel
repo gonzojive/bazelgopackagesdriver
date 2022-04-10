@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "gopackagesdriverclient_lib",
+    srcs = ["gopackagesdriverclient.go"],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/cmd/gopackagesdriverclient",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/cmdutil",
+        "//protocol",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_jbenet_go_context//io:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "gopackagesdriverclient",
+    embed = [":gopackagesdriverclient_lib"],
+    visibility = ["//visibility:public"],
+)

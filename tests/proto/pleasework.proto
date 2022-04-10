@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package apidefinitions.keyval;
+
+option go_package = "github.com/gonzojive/bazelgopackagesdriver/tests/proto/pleaseworkpb";
+
+// The type used for all keys in the database.
+message Key {
+  bytes key_bytes = 1;
+}
+
+// The type used for all values in the database.
+message Value {
+  bytes value_bytes = 1;
+}

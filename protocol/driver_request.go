@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package protocol
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 )
 
 // From https://pkg.go.dev/golang.org/x/tools/go/packages#LoadMode
@@ -63,6 +65,33 @@ const (
 	// NeedModule adds Module.
 	NeedModule
 )
+
+var allModes = map[LoadMode]string{
+	NeedName:            "NeedName",
+	NeedFiles:           "NeedFiles",
+	NeedCompiledGoFiles: "NeedCompiledGoFiles",
+	NeedImports:         "NeedImports",
+	NeedDeps:            "NeedDeps",
+	NeedExportsFile:     "NeedExportsFile",
+	NeedTypes:           "NeedTypes",
+	NeedSyntax:          "NeedSyntax",
+	NeedTypesInfo:       "NeedTypesInfo",
+	NeedTypesSizes:      "NeedTypesSizes",
+	typecheckCgo:        "typecheckCgo",
+	NeedModule:          "NeedModule",
+}
+
+// String returns the debug representation of the LoadMode int.
+func (m LoadMode) String() string {
+	var modes []string
+	for bit, name := range allModes {
+		if m&bit != 0 {
+			modes = append(modes, name)
+		}
+	}
+	sort.Strings(modes)
+	return fmt.Sprintf("[LoadMode=%d; %s]", int(m), strings.Join(modes, "|"))
+}
 
 // From https://github.com/golang/tools/blob/v0.1.0/go/packages/external.go#L32
 // Most fields are disabled since there is no need for them

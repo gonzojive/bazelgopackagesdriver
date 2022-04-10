@@ -21,6 +21,9 @@ import (
 	"go/types"
 	"os"
 	"strings"
+
+	"github.com/golang/glog"
+	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 )
 
 type driverResponse struct {
@@ -72,10 +75,11 @@ func run() (*driverResponse, error) {
 
 	queries := os.Args[1:]
 
-	request, err := ReadDriverRequest(os.Stdin)
+	request, err := protocol.ReadDriverRequest(os.Stdin)
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to read request: %w", err)
 	}
+	glog.Infof("read driver request %v with queries %v", request, queries)
 
 	bazel, err := NewBazel(ctx, bazelBin, workspaceRoot)
 	if err != nil {

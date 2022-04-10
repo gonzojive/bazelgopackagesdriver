@@ -1,0 +1,7 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "test1_test",
+    srcs = ["test1_test.go"],
+    deps = ["@org_golang_x_tools//go/packages:go_default_library"],
+)

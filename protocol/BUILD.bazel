@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "protocol",
+    srcs = [
+        "driver_request.go",
+        "driver_response.go",
+        "flatpackage.go",
+    ],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/protocol",
+    visibility = ["//visibility:public"],
+)

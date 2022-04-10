@@ -1,0 +1,40 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# From https://github.com/orrsella/bazel-example/blob/master/.gitignore
+bazel
+bazel-bazel-test
+bazel-bin
+bazel-genfiles
+bazel-out
+bazel-bazelgopackagesdriver
+bazel-gopackagesdriver
+bazel-testlogs
+.cache
+
+.bazelrc.user
+.idea
+rules_nodejs-*.tar.gz
+dist
+bazel-out
+/e2e/*/bazel-*
+/examples/*/bazel-*
+/packages/*/bazel-*
+node_modules
+!/third_party/npm/node_modules
+yarn-error.log
+internal/node/_node_bin
+

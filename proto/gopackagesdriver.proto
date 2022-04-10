@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package gopackagesdriver;
+
+option go_package = "github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb";
+
+// A simple key-value storage service
+service GoPackagesDriverService {
+    // Provides a value for each key request
+    rpc LoadPackages (LoadPackagesRequest) returns (LoadPackagesResponse) {}
+}
+
+// The request message containing the key.
+message LoadPackagesRequest {
+    repeated string queries = 1;
+    uint64 load_mode = 2;
+}
+
+// The GOPACKAGESDRIVER response object.
+message LoadPackagesResponse {
+    // JSON-encoded response.
+    string raw_json = 1;
+}
