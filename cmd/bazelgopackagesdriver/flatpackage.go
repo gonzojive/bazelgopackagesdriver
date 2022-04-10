@@ -22,6 +22,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 )
 
 type ResolvePkgFunc func(importPath string) *FlatPackage
@@ -33,14 +35,7 @@ type FlatPackagesError struct {
 	Kind FlatPackagesErrorKind
 }
 
-type FlatPackagesErrorKind int
-
-const (
-	UnknownError FlatPackagesErrorKind = iota
-	ListError
-	ParseError
-	TypeError
-)
+type FlatPackagesErrorKind = protocol.FlatPackagesError
 
 func (err FlatPackagesError) Error() string {
 	pos := err.Pos
@@ -52,18 +47,7 @@ func (err FlatPackagesError) Error() string {
 
 // FlatPackage is the JSON form of Package
 // It drops all the type and syntax fields, and transforms the Imports
-type FlatPackage struct {
-	ID              string
-	Name            string              `json:",omitempty"`
-	PkgPath         string              `json:",omitempty"`
-	Errors          []FlatPackagesError `json:",omitempty"`
-	GoFiles         []string            `json:",omitempty"`
-	CompiledGoFiles []string            `json:",omitempty"`
-	OtherFiles      []string            `json:",omitempty"`
-	ExportFile      string              `json:",omitempty"`
-	Imports         map[string]string   `json:",omitempty"`
-	Standard        bool                `json:",omitempty"`
-}
+type FlatPackage = protocol.FlatPackage
 
 type (
 	PackageFunc      func(pkg *FlatPackage)
@@ -94,7 +78,7 @@ func WalkFlatPackagesFromJSON(jsonFile string, onPkg PackageFunc) error {
 	return nil
 }
 
-func (fp *FlatPackage) ResolvePaths(prf PathResolverFunc) error {
+func ResolvePaths(fp *FlatPackage, prf PathResolverFunc) error {
 	resolvePathsInPlace(prf, fp.CompiledGoFiles)
 	resolvePathsInPlace(prf, fp.GoFiles)
 	resolvePathsInPlace(prf, fp.OtherFiles)
@@ -104,16 +88,16 @@ func (fp *FlatPackage) ResolvePaths(prf PathResolverFunc) error {
 
 // FilterFilesForBuildTags filters the source files given the current build
 // tags.
-func (fp *FlatPackage) FilterFilesForBuildTags() {
+func FilterFilesForBuildTags(fp *FlatPackage) {
 	fp.GoFiles = filterSourceFilesForTags(fp.GoFiles)
 	fp.CompiledGoFiles = filterSourceFilesForTags(fp.CompiledGoFiles)
 }
 
-func (fp *FlatPackage) IsStdlib() bool {
+func IsStdlib(fp *FlatPackage) bool {
 	return fp.Standard
 }
 
-func (fp *FlatPackage) ResolveImports(resolve ResolvePkgFunc) {
+func ResolveImports(fp *FlatPackage, resolve ResolvePkgFunc) {
 	// Stdlib packages are already complete import wise
 	if fp.IsStdlib() {
 		return
@@ -152,6 +136,6 @@ func (fp *FlatPackage) ResolveImports(resolve ResolvePkgFunc) {
 	}
 }
 
-func (fp *FlatPackage) IsRoot() bool {
+func IsRoot(fp *FlatPackage) bool {
 	return strings.HasPrefix(fp.ID, "//")
 }

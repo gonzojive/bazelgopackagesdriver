@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 )
 
 type BazelJSONBuilder struct {
@@ -80,9 +82,9 @@ func NewBazelJSONBuilder(bazel *Bazel, requests ...string) (*BazelJSONBuilder, e
 	}, nil
 }
 
-func (b *BazelJSONBuilder) outputGroupsForMode(mode LoadMode) string {
+func (b *BazelJSONBuilder) outputGroupsForMode(mode protocol.LoadMode) string {
 	og := "go_pkg_driver_json_file,go_pkg_driver_stdlib_json_file,go_pkg_driver_srcs"
-	if mode&NeedExportsFile != 0 {
+	if mode&protocol.NeedExportsFile != 0 {
 		og += ",go_pkg_driver_export_file"
 	}
 	return og
@@ -106,7 +108,7 @@ func (b *BazelJSONBuilder) query(ctx context.Context, query string) ([]string, e
 	return labels, nil
 }
 
-func (b *BazelJSONBuilder) Build(ctx context.Context, mode LoadMode) ([]string, error) {
+func (b *BazelJSONBuilder) Build(ctx context.Context, mode protocol.LoadMode) ([]string, error) {
 	labels, err := b.query(ctx, b.queryFromRequests(b.requests...))
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)

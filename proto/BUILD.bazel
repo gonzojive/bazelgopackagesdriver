@@ -1,51 +1,7 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@build_stack_rules_proto//rules:proto_compiled_sources.bzl", "proto_compiled_sources")
-load("@build_stack_rules_proto//rules:proto_compile.bzl", "proto_compile")
 
 proto_library(
     name = "gopackagesdriverpb_proto",
     srcs = ["gopackagesdriver.proto"],
     visibility = ["//visibility:public"],
 )
-
-proto_compile(
-    name = "gopackagesdriver_go_proto",
-    # srcs = [
-    #     "gopackagesdriverpb.pb.go",
-    #     "gopackagesdriverpb_grpc.pb.go",
-    # ],
-    outputs = [
-        "gopackagesdriverpb.pb.go",
-        "gopackagesdriverpb_grpc.pb.go",
-    ],
-    output_mappings = [
-        "gopackagesdriverpb.pb.go=github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb/gopackagesdriver.pb.go",
-        "gopackagesdriverpb_grpc.pb.go=github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb/gopackagesdriver_grpc.pb.go",
-        #"gopackagesdriverpb_grpc.pb.go=github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb_grpc.pb.go",
-    ],
-    # options = {
-    #     "@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go": ["plugins=grpc"],
-    # },
-    plugins = [
-        "@build_stack_rules_proto//plugin/golang/protobuf:protoc-gen-go",
-        "@build_stack_rules_proto//plugin/grpc/grpc-go:protoc-gen-go-grpc",
-    ],
-    proto = "gopackagesdriverpb_proto",
-    visibility = ["//proto:__subpackages__"],
-)
-
-# proto_compiled_sources(
-#     name = "compiled_sources",
-#     srcs = [
-#         "gopackagesdriverpb.pb.go",
-#         "gopackagesdriverpb_grpc.pb.go",
-#     ],
-#     output_mappings = [
-#         "gopackagesdriverpb.pb.go=github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb.pb.go",
-#         "gopackagesdriverpb_grpc.pb.go=github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb_grpc.pb.go",
-#     ],
-#     options = {"@build_stack_rules_proto//plugin/gogo/protobuf:protoc-gen-gogofast": ["plugins=grpc"]},
-#     plugins = ["@build_stack_rules_proto//plugin/gogo/protobuf:protoc-gen-gogofast"],
-#     proto = "gopackagesdriverpb_proto",
-#     visibility = ["//proto:__subpackages__"],
-# )

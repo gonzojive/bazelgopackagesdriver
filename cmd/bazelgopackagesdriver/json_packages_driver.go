@@ -17,6 +17,8 @@ package main
 import (
 	"fmt"
 	"go/types"
+
+	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 )
 
 type JSONPackagesDriver struct {
@@ -47,10 +49,10 @@ func NewJSONPackagesDriver(jsonFiles []string, prf PathResolverFunc) (*JSONPacka
 	return jpd, nil
 }
 
-func (b *JSONPackagesDriver) Match(pattern ...string) *driverResponse {
+func (b *JSONPackagesDriver) Match(pattern ...string) *protocol.DriverResponse {
 	rootPkgs, packages := b.registry.Match(pattern...)
 
-	return &driverResponse{
+	return &protocol.DriverResponse{
 		NotHandled: false,
 		Sizes:      types.SizesFor("gc", "amd64").(*types.StdSizes),
 		Roots:      rootPkgs,

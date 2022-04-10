@@ -17,62 +17,129 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"go/types"
+	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
+	"github.com/gonzojive/bazelgopackagesdriver/internal/cmdutil"
 	"github.com/gonzojive/bazelgopackagesdriver/protocol"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+
+	pb "github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb"
 )
-
-type driverResponse struct {
-	// NotHandled is returned if the request can't be handled by the current
-	// driver. If an external driver returns a response with NotHandled, the
-	// rest of the driverResponse is ignored, and go/packages will fallback
-	// to the next driver. If go/packages is extended in the future to support
-	// lists of multiple drivers, go/packages will fall back to the next driver.
-	NotHandled bool
-
-	// Sizes, if not nil, is the types.Sizes to use when type checking.
-	Sizes *types.StdSizes
-
-	// Roots is the set of package IDs that make up the root packages.
-	// We have to encode this separately because when we encode a single package
-	// we cannot know if it is one of the roots as that requires knowledge of the
-	// graph it is part of.
-	Roots []string `json:",omitempty"`
-
-	// Packages is the full set of packages in the graph.
-	// The packages are not connected into a graph.
-	// The Imports if populated will be stubs that only have their ID set.
-	// Imports will be connected and then type and syntax information added in a
-	// later pass (see refine).
-	Packages []*FlatPackage
-}
 
 var (
 	// It seems https://github.com/bazelbuild/bazel/issues/3115 isn't fixed when specifying
 	// the aspect from the command line. Use this trick in the mean time.
-	rulesGoRepositoryName = getenvDefault("GOPACKAGESDRIVER_RULES_GO_REPOSITORY_NAME", "@io_bazel_rules_go")
-	bazelBin              = getenvDefault("GOPACKAGESDRIVER_BAZEL", "bazel")
+	rulesGoRepositoryName = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_RULES_GO_REPOSITORY_NAME", "@io_bazel_rules_go")
+	bazelBin              = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL", "bazel")
 	bazelFlags            = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_FLAGS"))
 	bazelQueryFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_QUERY_FLAGS"))
-	bazelQueryScope       = getenvDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", "")
+	bazelQueryScope       = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", "")
 	bazelBuildFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_BUILD_FLAGS"))
 	workspaceRoot         = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-	emptyResponse         = &driverResponse{
+	emptyResponse         = &protocol.DriverResponse{
 		NotHandled: false,
 		Sizes:      types.SizesFor("gc", "amd64").(*types.StdSizes),
 		Roots:      []string{},
-		Packages:   []*FlatPackage{},
+		Packages:   []*protocol.FlatPackage{},
 	}
+
+	serverMode     = flag.String("mode", "normal", "Oneof 'server', 'client', 'normal'; If 'server,' start in gRPC server rather than in command line driver mode; if 'client', connects to the server at the given port.")
+	grpcPort       = flag.Int("grpc_port", 50051, "The server port")
+	lameduckPeriod = flag.Duration("lameduck_duration", time.Second*5, "Time to wait for the server to shut down gracefully if sent a signal.")
 )
 
-func run() (*driverResponse, error) {
-	ctx, cancel := signalContext(context.Background(), os.Interrupt)
+func main() {
+	if err := run(); err != nil {
+		glog.Exitf("error: %v", err)
+	}
+}
+
+func run() error {
+	flag.Parse()
+
+	ctx, cancel := cmdutil.SignalCancelledContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	if *serverMode == "server" {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
+		if err != nil {
+			return fmt.Errorf("failed to listen on --grpc_port: %w", err)
+		}
+
+		s := grpc.NewServer()
+		pb.RegisterGoPackagesDriverServiceServer(s, &server{})
+		glog.Infof("gRPC server listening at %v", lis.Addr())
+
+		return serveUntilCancelled(ctx, s, lis)
+	}
+
+	switch *serverMode {
+	case "normal":
+		response, err := runRegularMode(ctx)
+		if err != nil {
+			return err
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to encode response: %v", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("invalid --mode flag = %q", *serverMode)
+	}
+}
+
+func serveUntilCancelled(ctx context.Context, s *grpc.Server, lis net.Listener) error {
+	eg := &errgroup.Group{}
+	fnDone := make(chan struct{})
+	eg.Go(func() error {
+		defer close(fnDone)
+		if err := s.Serve(lis); err != nil {
+			return fmt.Errorf("Serve() error: %w", err)
+		}
+		return nil
+	})
+
+	stopServerAsync := func() {
+		eg.Go(func() error {
+			glog.Infof("attempting to gracefully shut down gRPC server...")
+			s.GracefulStop()
+			return nil
+		})
+		eg.Go(func() error {
+			timer := time.NewTimer(*lameduckPeriod)
+			select {
+			case <-fnDone:
+				timer.Stop()
+				return nil
+			case <-timer.C:
+				glog.Infof("forcing shut down gRPC server...")
+				s.Stop()
+				return nil
+			}
+		})
+	}
+
+	eg.Go(func() error {
+		select {
+		case <-ctx.Done():
+			stopServerAsync()
+			return ctx.Err()
+		case <-fnDone:
+			return nil
+		}
+	})
+	return eg.Wait()
+}
+
+func runRegularMode(ctx context.Context) (*protocol.DriverResponse, error) {
 	queries := os.Args[1:]
 
 	request, err := protocol.ReadDriverRequest(os.Stdin)
@@ -104,16 +171,42 @@ func run() (*driverResponse, error) {
 	return driver.Match(queries...), nil
 }
 
-func main() {
-	response, err := run()
-	if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
-		fmt.Fprintf(os.Stderr, "unable to encode response: %v", err)
+type server struct {
+	pb.UnimplementedGoPackagesDriverServiceServer
+}
+
+func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) (*pb.LoadPackagesResponse, error) {
+	request := &protocol.DriverRequest{
+		Mode: protocol.LoadMode(req.LoadMode),
 	}
+	glog.Infof("read driver request %v with queries %v", request, req.GetQueries())
+
+	bazel, err := NewBazel(ctx, bazelBin, workspaceRoot)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v", err)
-		// gopls will check the packages driver exit code, and if there is an
-		// error, it will fall back to go list. Obviously we don't want that,
-		// so force a 0 exit code.
-		os.Exit(0)
+		return nil, fmt.Errorf("unable to create bazel instance: %w", err)
 	}
+
+	bazelJsonBuilder, err := NewBazelJSONBuilder(bazel, req.GetQueries()...)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build JSON files: %w", err)
+	}
+
+	jsonFiles, err := bazelJsonBuilder.Build(ctx, request.Mode)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build JSON files: %w", err)
+	}
+
+	driver, err := NewJSONPackagesDriver(jsonFiles, bazelJsonBuilder.PathResolver())
+	if err != nil {
+		return nil, fmt.Errorf("unable to load JSON files: %w", err)
+	}
+
+	respObj := driver.Match(req.GetQueries()...)
+	respJSONBytes, err := json.Marshal(respObj)
+	if err != nil {
+		return nil, fmt.Errorf("internal error encoding JSON: %w", err)
+	}
+	return &pb.LoadPackagesResponse{
+		RawJson: string(respJSONBytes),
+	}, nil
 }

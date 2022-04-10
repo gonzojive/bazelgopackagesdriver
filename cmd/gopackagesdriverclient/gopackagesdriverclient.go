@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/types"
+	"log"
 	"os"
 	"strings"
 
@@ -26,6 +27,10 @@ import (
 	"github.com/gonzojive/bazelgopackagesdriver/internal/cmdutil"
 	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 	ctxio "github.com/jbenet/go-context/io"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb"
 )
 
 var (
@@ -38,6 +43,7 @@ var (
 	bazelQueryScope       = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", "")
 	bazelBuildFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_BUILD_FLAGS"))
 	workspaceRoot         = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	serverAddr            = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_SERVER_ADDR", "localhost:50051")
 	emptyResponse         = &protocol.DriverResponse{
 		NotHandled: false,
 		Sizes:      types.SizesFor("gc", "amd64").(*types.StdSizes),
@@ -57,7 +63,28 @@ func run() (*protocol.DriverResponse, error) {
 		return emptyResponse, fmt.Errorf("unable to read request: %w", err)
 	}
 	glog.Infof("read driver request %v with queries %v", request, queries)
-	return nil, fmt.Errorf("not implemented")
+
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := pb.NewGoPackagesDriverServiceClient(conn)
+
+	// Contact the server and print out its response.
+	respProto, err := c.LoadPackages(ctx, &pb.LoadPackagesRequest{
+		Queries:  queries,
+		LoadMode: uint64(request.Mode),
+	})
+	if err != nil {
+		return emptyResponse, fmt.Errorf("error: %w", err)
+	}
+	resp := &protocol.DriverResponse{}
+	if err := json.Unmarshal([]byte(respProto.GetRawJson()), resp); err != nil {
+		return emptyResponse, fmt.Errorf("error unmarshalling: %w", err)
+	}
+	return resp, nil
 }
 
 func main() {

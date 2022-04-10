@@ -2,9 +2,11 @@ package cmdutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 )
 
 // LookupEnvOrDefault returns os.LookupEnv(key) or defaultValue if the key is
@@ -39,12 +41,12 @@ func EnsureAbsolutePathFromWorkspace(workspaceRoot, path string) string {
 // an incoming signal occurs that is in the signals list, the cancellation
 // function is called.
 func SignalCancelledContext(parentCtx context.Context, signals ...os.Signal) (ctx context.Context, stop context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parentCtx)
+	ctx, cancel := withCustomCancelErr(parentCtx)
 	ch := make(chan os.Signal, 1)
 	go func() {
 		select {
-		case <-ch:
-			cancel()
+		case sig := <-ch:
+			cancel(fmt.Errorf("received signal %s (%d)", sig, sig))
 		case <-ctx.Done():
 		}
 	}()
@@ -52,5 +54,39 @@ func SignalCancelledContext(parentCtx context.Context, signals ...os.Signal) (ct
 		signal.Notify(ch, signals...)
 	}
 
-	return ctx, cancel
+	return ctx, func() { cancel(nil) }
+}
+
+type overridableErrContext struct {
+	err        error
+	underlying context.Context
+}
+
+func (ec *overridableErrContext) Deadline() (deadline time.Time, ok bool) {
+	return ec.underlying.Deadline()
+}
+
+func (ec *overridableErrContext) Done() <-chan struct{} {
+	return ec.underlying.Done()
+}
+
+func (ec *overridableErrContext) Err() error {
+	overriddenErr := ec.underlying.Err()
+	if overriddenErr != nil && ec.err != nil {
+		return ec.err
+	}
+	return overriddenErr
+}
+
+func (ec *overridableErrContext) Value(key any) any {
+	return ec.underlying.Value(key)
+}
+
+func withCustomCancelErr(parent context.Context) (ctx context.Context, cancelWithErr func(error)) {
+	underlyingCtx, simpleCancel := context.WithCancel(parent)
+	outputCtx := &overridableErrContext{underlying: underlyingCtx}
+	return outputCtx, func(err error) {
+		outputCtx.err = err
+		simpleCancel()
+	}
 }
