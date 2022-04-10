@@ -57,6 +57,12 @@ func main() {
 
 func run() error {
 	flag.Parse()
+	glog.Infof("bazelgopackagesdriver started with mode=%q, port=%d", *serverMode, *grpcPort)
+	go func() {
+		for _ = range time.Tick(time.Second * 2) {
+			glog.Flush()
+		}
+	}()
 
 	ctx, cancel := cmdutil.SignalCancelledContext(context.Background(), os.Interrupt)
 	defer cancel()
@@ -64,13 +70,19 @@ func run() error {
 	params := configuration.FromEnv()
 
 	if *serverMode == "server" {
+		glog.Infof("gRPC server starting up at %d", *grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
 		if err != nil {
 			return fmt.Errorf("failed to listen on --grpc_port: %w", err)
 		}
 
 		s := grpc.NewServer()
-		pb.RegisterGoPackagesDriverServiceServer(s, &server{params: params})
+		server, err := startServer(ctx, params)
+		if err != nil {
+			return fmt.Errorf("failed to start gopackagesdriver server: %w", err)
+		}
+		defer server.close()
+		pb.RegisterGoPackagesDriverServiceServer(s, server)
 		glog.Infof("gRPC server listening at %v", lis.Addr())
 
 		return serveUntilCancelled(ctx, s, lis)
@@ -168,7 +180,36 @@ func runRegularMode(ctx context.Context, params *configuration.Params) (*protoco
 
 type server struct {
 	pb.UnimplementedGoPackagesDriverServiceServer
-	params *configuration.Params
+	params   *configuration.Params
+	rmConfig func() error
+}
+
+func startServer(ctx context.Context, params *configuration.Params) (*server, error) {
+	s := &server{params: params}
+	if _, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot); err != nil {
+		return nil, fmt.Errorf("unable to create bazel instance: %w", err)
+	}
+
+	rmConfig, err := configuration.WriteProcessInfoToFile(ctx, params, fmt.Sprintf("localhost:%d", *grpcPort))
+	if err != nil {
+		return nil, err
+	}
+	s.rmConfig = rmConfig
+
+	return s, nil
+}
+
+func (s *server) close() error {
+	if s.rmConfig != nil {
+		return s.rmConfig()
+	}
+	return nil
+}
+
+func (s *server) CheckStatus(ctx context.Context, req *pb.CheckStatusRequest) (*pb.CheckStatusResponse, error) {
+	return &pb.CheckStatusResponse{
+		DebugMessage: fmt.Sprintf("everything is up... %v", s.params),
+	}, nil
 }
 
 func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) (*pb.LoadPackagesResponse, error) {

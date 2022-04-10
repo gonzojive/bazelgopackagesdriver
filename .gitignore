@@ -24,6 +24,7 @@ bazel-bazelgopackagesdriver
 bazel-gopackagesdriver
 bazel-testlogs
 .cache
+.bazelgopackagesdriver/
 
 .bazelrc.user
 .idea

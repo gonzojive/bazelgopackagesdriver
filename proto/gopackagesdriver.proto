@@ -8,6 +8,16 @@ option go_package = "github.com/gonzojive/bazelgopackagesdriver/proto/gopackages
 service GoPackagesDriverService {
     // Provides a value for each key request
     rpc LoadPackages (LoadPackagesRequest) returns (LoadPackagesResponse) {}
+
+    // Checks the health of the server.
+    rpc CheckStatus (CheckStatusRequest) returns (CheckStatusResponse) {}
+}
+
+message CheckStatusRequest {
+}
+
+message CheckStatusResponse {
+    string debug_message = 1;
 }
 
 // The request message containing the key.
@@ -22,7 +32,11 @@ message LoadPackagesResponse {
     string raw_json = 1;
 }
 
+// ProcessInfo is information about an active GoPackagesDriverService instance.
 message ProcessInfo {
     // The process ID of the running server.
     int64 pid = 1;
+
+    // Address of the gRPC server running the GoPackagesDriverService service.
+    string grpc_address = 2;
 }

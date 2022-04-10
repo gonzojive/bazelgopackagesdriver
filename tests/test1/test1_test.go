@@ -3,6 +3,7 @@ package test1
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
@@ -46,12 +47,18 @@ func TestPackagesLoad1(t *testing.T) {
 
 	workingDir := "/home/red/git/bazelgopackagesdriver"
 
+	env := []string{
+		//"GOPACKAGESDRIVER=gopackagesdriverclient",
+		"GOPACKAGESDRIVER=mydriver.sh",
+		"GOPACKAGESPRINTDRIVERERRORS=1",
+		"BUILD_WORKSPACE_DIRECTORY=/home/red/git/bazelgopackagesdriver",
+	}
+	env = append(env, os.Environ()...)
+
 	cfg := &packages.Config{
 		Context: context.Background(),
 		Dir:     workingDir,
-		Env: []string{
-			"GOPACKAGESDRIVER=gopackagesdriverclient",
-		},
+		Env:     env,
 		//BuildFlags: ,
 		Mode: packages.NeedName |
 			packages.NeedFiles |
@@ -66,7 +73,7 @@ func TestPackagesLoad1(t *testing.T) {
 		// 	panic("go/packages must not be used to parse files")
 		// },
 		Logf: func(format string, args ...interface{}) {
-			t.Logf(format, args)
+			t.Logf("packages config: "+format, args)
 		},
 		Tests: true,
 	}

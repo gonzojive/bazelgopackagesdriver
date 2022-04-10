@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GoPackagesDriverServiceClient interface {
 	LoadPackages(ctx context.Context, in *LoadPackagesRequest, opts ...grpc.CallOption) (*LoadPackagesResponse, error)
+	CheckStatus(ctx context.Context, in *CheckStatusRequest, opts ...grpc.CallOption) (*CheckStatusResponse, error)
 }
 
 type goPackagesDriverServiceClient struct {
@@ -38,11 +39,21 @@ func (c *goPackagesDriverServiceClient) LoadPackages(ctx context.Context, in *Lo
 	return out, nil
 }
 
+func (c *goPackagesDriverServiceClient) CheckStatus(ctx context.Context, in *CheckStatusRequest, opts ...grpc.CallOption) (*CheckStatusResponse, error) {
+	out := new(CheckStatusResponse)
+	err := c.cc.Invoke(ctx, "/gopackagesdriver.GoPackagesDriverService/CheckStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GoPackagesDriverServiceServer is the server API for GoPackagesDriverService service.
 // All implementations must embed UnimplementedGoPackagesDriverServiceServer
 // for forward compatibility
 type GoPackagesDriverServiceServer interface {
 	LoadPackages(context.Context, *LoadPackagesRequest) (*LoadPackagesResponse, error)
+	CheckStatus(context.Context, *CheckStatusRequest) (*CheckStatusResponse, error)
 	mustEmbedUnimplementedGoPackagesDriverServiceServer()
 }
 
@@ -52,6 +63,9 @@ type UnimplementedGoPackagesDriverServiceServer struct {
 
 func (UnimplementedGoPackagesDriverServiceServer) LoadPackages(context.Context, *LoadPackagesRequest) (*LoadPackagesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoadPackages not implemented")
+}
+func (UnimplementedGoPackagesDriverServiceServer) CheckStatus(context.Context, *CheckStatusRequest) (*CheckStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckStatus not implemented")
 }
 func (UnimplementedGoPackagesDriverServiceServer) mustEmbedUnimplementedGoPackagesDriverServiceServer() {
 }
@@ -85,6 +99,24 @@ func _GoPackagesDriverService_LoadPackages_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GoPackagesDriverService_CheckStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoPackagesDriverServiceServer).CheckStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gopackagesdriver.GoPackagesDriverService/CheckStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoPackagesDriverServiceServer).CheckStatus(ctx, req.(*CheckStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GoPackagesDriverService_ServiceDesc is the grpc.ServiceDesc for GoPackagesDriverService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -95,6 +127,10 @@ var GoPackagesDriverService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoadPackages",
 			Handler:    _GoPackagesDriverService_LoadPackages_Handler,
+		},
+		{
+			MethodName: "CheckStatus",
+			Handler:    _GoPackagesDriverService_CheckStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

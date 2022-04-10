@@ -80,6 +80,7 @@ func (b *BazelJSONBuilder) queryFromRequests(requests ...string) string {
 func NewBazelJSONBuilder(params *configuration.Params, bazel *Bazel, requests ...string) (*BazelJSONBuilder, error) {
 	return &BazelJSONBuilder{
 		bazel:    bazel,
+		params:   params,
 		requests: requests,
 	}, nil
 }
