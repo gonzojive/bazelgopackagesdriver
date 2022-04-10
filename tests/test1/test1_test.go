@@ -50,7 +50,7 @@ func TestPackagesLoad1(t *testing.T) {
 		Context: context.Background(),
 		Dir:     workingDir,
 		Env: []string{
-			"GOPACKAGESDRIVER=bazelgopackagesdriver",
+			"GOPACKAGESDRIVER=gopackagesdriverclient",
 		},
 		//BuildFlags: ,
 		Mode: packages.NeedName |

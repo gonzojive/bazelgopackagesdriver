@@ -20,10 +20,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gonzojive/bazelgopackagesdriver/internal/configuration"
 	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 )
 
 type BazelJSONBuilder struct {
+	params   *configuration.Params
 	bazel    *Bazel
 	requests []string
 }
@@ -44,7 +46,7 @@ func (b *BazelJSONBuilder) packageQuery(importPath string) string {
 	if strings.HasSuffix(importPath, "/...") {
 		importPath = fmt.Sprintf(`^%s(/.+)?$`, strings.TrimSuffix(importPath, "/..."))
 	}
-	return fmt.Sprintf(`kind("go_library", attr(importpath, "%s", deps(%s)))`, importPath, bazelQueryScope)
+	return fmt.Sprintf(`kind("go_library", attr(importpath, "%s", deps(%s)))`, importPath, b.params.BazelQueryScope)
 }
 
 func (b *BazelJSONBuilder) queryFromRequests(requests ...string) string {
@@ -52,8 +54,8 @@ func (b *BazelJSONBuilder) queryFromRequests(requests ...string) string {
 	for _, request := range requests {
 		result := ""
 		if request == "." || request == "./..." {
-			if bazelQueryScope != "" {
-				result = fmt.Sprintf(`kind("go_library", %s)`, bazelQueryScope)
+			if b.params.BazelQueryScope != "" {
+				result = fmt.Sprintf(`kind("go_library", %s)`, b.params.BazelQueryScope)
 			} else {
 				result = fmt.Sprintf(RulesGoStdlibLabel)
 			}
@@ -62,7 +64,7 @@ func (b *BazelJSONBuilder) queryFromRequests(requests ...string) string {
 		} else if strings.HasPrefix(request, "file=") {
 			f := strings.TrimPrefix(request, "file=")
 			result = b.fileQuery(f)
-		} else if bazelQueryScope != "" {
+		} else if b.params.BazelQueryScope != "" {
 			result = b.packageQuery(request)
 		}
 		if result != "" {
@@ -75,7 +77,7 @@ func (b *BazelJSONBuilder) queryFromRequests(requests ...string) string {
 	return strings.Join(ret, " union ")
 }
 
-func NewBazelJSONBuilder(bazel *Bazel, requests ...string) (*BazelJSONBuilder, error) {
+func NewBazelJSONBuilder(params *configuration.Params, bazel *Bazel, requests ...string) (*BazelJSONBuilder, error) {
 	return &BazelJSONBuilder{
 		bazel:    bazel,
 		requests: requests,
@@ -91,7 +93,7 @@ func (b *BazelJSONBuilder) outputGroupsForMode(mode protocol.LoadMode) string {
 }
 
 func (b *BazelJSONBuilder) query(ctx context.Context, query string) ([]string, error) {
-	queryArgs := concatStringsArrays(bazelFlags, bazelQueryFlags, []string{
+	queryArgs := concatStringsArrays(b.params.BazelFlags, b.params.BazelQueryFlags, []string{
 		"--ui_event_filters=-info,-stderr",
 		"--noshow_progress",
 		"--order_output=no",
@@ -122,10 +124,10 @@ func (b *BazelJSONBuilder) Build(ctx context.Context, mode protocol.LoadMode) ([
 		"--experimental_convenience_symlinks=ignore",
 		"--ui_event_filters=-info,-stderr",
 		"--noshow_progress",
-		"--aspects=" + rulesGoRepositoryName + "//go/tools/gopackagesdriver:aspect.bzl%go_pkg_info_aspect",
+		"--aspects=" + b.params.RulesGoRepositoryName + "//go/tools/gopackagesdriver:aspect.bzl%go_pkg_info_aspect",
 		"--output_groups=" + b.outputGroupsForMode(mode),
 		"--keep_going", // Build all possible packages
-	}, bazelFlags, bazelBuildFlags, labels)
+	}, b.params.BazelFlags, b.params.BazelBuildFlags, labels)
 	files, err := b.bazel.Build(ctx, buildArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to bazel build %v: %w", buildArgs, err)

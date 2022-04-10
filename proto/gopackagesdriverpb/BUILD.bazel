@@ -23,6 +23,8 @@ load("@build_stack_rules_proto//rules:proto_compile.bzl", "proto_compile")
 #     visibility = ["//proto:__subpackages__"],
 # )
 
+# Regenerate compiled source with
+# bazel run  //proto/gopackagesdriverpb:compiled_sources.update
 proto_compiled_sources(
     name = "compiled_sources",
     srcs = [

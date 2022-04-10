@@ -16,16 +16,20 @@ package main
 
 import (
 	"strings"
+
+	"github.com/gonzojive/bazelgopackagesdriver/internal/cmdutil"
 )
 
 type PackageRegistry struct {
+	workspaceRoot        string
 	packagesByID         map[string]*FlatPackage
 	packagesByImportPath map[string]*FlatPackage
 	packagesByFile       map[string]*FlatPackage
 }
 
-func NewPackageRegistry(pkgs ...*FlatPackage) *PackageRegistry {
+func NewPackageRegistry(workspaceRoot string, pkgs ...*FlatPackage) *PackageRegistry {
 	pr := &PackageRegistry{
+		workspaceRoot:        workspaceRoot,
 		packagesByID:         map[string]*FlatPackage{},
 		packagesByImportPath: map[string]*FlatPackage{},
 		packagesByFile:       map[string]*FlatPackage{},
@@ -110,7 +114,7 @@ func (pr *PackageRegistry) Match(patterns ...string) ([]string, []*FlatPackage) 
 				}
 			}
 		} else if strings.HasPrefix(pattern, "file=") {
-			f := ensureAbsolutePathFromWorkspace(strings.TrimPrefix(pattern, "file="))
+			f := cmdutil.EnsureAbsolutePathFromWorkspace(pr.workspaceRoot, strings.TrimPrefix(pattern, "file="))
 			if pkg, ok := pr.packagesByFile[f]; ok {
 				roots[pkg.ID] = struct{}{}
 			}

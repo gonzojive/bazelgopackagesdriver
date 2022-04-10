@@ -21,3 +21,8 @@ message LoadPackagesResponse {
     // JSON-encoded response.
     string raw_json = 1;
 }
+
+message ProcessInfo {
+    // The process ID of the running server.
+    int64 pid = 1;
+}

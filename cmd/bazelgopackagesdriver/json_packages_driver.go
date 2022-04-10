@@ -25,9 +25,9 @@ type JSONPackagesDriver struct {
 	registry *PackageRegistry
 }
 
-func NewJSONPackagesDriver(jsonFiles []string, prf PathResolverFunc) (*JSONPackagesDriver, error) {
+func NewJSONPackagesDriver(workspaceRoot string, jsonFiles []string, prf PathResolverFunc) (*JSONPackagesDriver, error) {
 	jpd := &JSONPackagesDriver{
-		registry: NewPackageRegistry(),
+		registry: NewPackageRegistry(workspaceRoot),
 	}
 
 	for _, f := range jsonFiles {

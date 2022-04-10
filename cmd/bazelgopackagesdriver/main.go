@@ -22,11 +22,11 @@ import (
 	"go/types"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/gonzojive/bazelgopackagesdriver/internal/cmdutil"
+	"github.com/gonzojive/bazelgopackagesdriver/internal/configuration"
 	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -37,14 +37,7 @@ import (
 var (
 	// It seems https://github.com/bazelbuild/bazel/issues/3115 isn't fixed when specifying
 	// the aspect from the command line. Use this trick in the mean time.
-	rulesGoRepositoryName = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_RULES_GO_REPOSITORY_NAME", "@io_bazel_rules_go")
-	bazelBin              = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL", "bazel")
-	bazelFlags            = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_FLAGS"))
-	bazelQueryFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_QUERY_FLAGS"))
-	bazelQueryScope       = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", "")
-	bazelBuildFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_BUILD_FLAGS"))
-	workspaceRoot         = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-	emptyResponse         = &protocol.DriverResponse{
+	emptyResponse = &protocol.DriverResponse{
 		NotHandled: false,
 		Sizes:      types.SizesFor("gc", "amd64").(*types.StdSizes),
 		Roots:      []string{},
@@ -68,6 +61,8 @@ func run() error {
 	ctx, cancel := cmdutil.SignalCancelledContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	params := configuration.FromEnv()
+
 	if *serverMode == "server" {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
 		if err != nil {
@@ -75,7 +70,7 @@ func run() error {
 		}
 
 		s := grpc.NewServer()
-		pb.RegisterGoPackagesDriverServiceServer(s, &server{})
+		pb.RegisterGoPackagesDriverServiceServer(s, &server{params: params})
 		glog.Infof("gRPC server listening at %v", lis.Addr())
 
 		return serveUntilCancelled(ctx, s, lis)
@@ -83,7 +78,7 @@ func run() error {
 
 	switch *serverMode {
 	case "normal":
-		response, err := runRegularMode(ctx)
+		response, err := runRegularMode(ctx, params)
 		if err != nil {
 			return err
 		}
@@ -139,7 +134,7 @@ func serveUntilCancelled(ctx context.Context, s *grpc.Server, lis net.Listener) 
 	return eg.Wait()
 }
 
-func runRegularMode(ctx context.Context) (*protocol.DriverResponse, error) {
+func runRegularMode(ctx context.Context, params *configuration.Params) (*protocol.DriverResponse, error) {
 	queries := os.Args[1:]
 
 	request, err := protocol.ReadDriverRequest(os.Stdin)
@@ -148,12 +143,12 @@ func runRegularMode(ctx context.Context) (*protocol.DriverResponse, error) {
 	}
 	glog.Infof("read driver request %v with queries %v", request, queries)
 
-	bazel, err := NewBazel(ctx, bazelBin, workspaceRoot)
+	bazel, err := NewBazel(ctx, params.BazelBin, params.WorkspaceRoot)
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to create bazel instance: %w", err)
 	}
 
-	bazelJsonBuilder, err := NewBazelJSONBuilder(bazel, queries...)
+	bazelJsonBuilder, err := NewBazelJSONBuilder(params, bazel, queries...)
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to build JSON files: %w", err)
 	}
@@ -163,7 +158,7 @@ func runRegularMode(ctx context.Context) (*protocol.DriverResponse, error) {
 		return emptyResponse, fmt.Errorf("unable to build JSON files: %w", err)
 	}
 
-	driver, err := NewJSONPackagesDriver(jsonFiles, bazelJsonBuilder.PathResolver())
+	driver, err := NewJSONPackagesDriver(params.WorkspaceRoot, jsonFiles, bazelJsonBuilder.PathResolver())
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to load JSON files: %w", err)
 	}
@@ -173,6 +168,7 @@ func runRegularMode(ctx context.Context) (*protocol.DriverResponse, error) {
 
 type server struct {
 	pb.UnimplementedGoPackagesDriverServiceServer
+	params *configuration.Params
 }
 
 func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) (*pb.LoadPackagesResponse, error) {
@@ -181,12 +177,12 @@ func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) 
 	}
 	glog.Infof("read driver request %v with queries %v", request, req.GetQueries())
 
-	bazel, err := NewBazel(ctx, bazelBin, workspaceRoot)
+	bazel, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create bazel instance: %w", err)
 	}
 
-	bazelJsonBuilder, err := NewBazelJSONBuilder(bazel, req.GetQueries()...)
+	bazelJsonBuilder, err := NewBazelJSONBuilder(s.params, bazel, req.GetQueries()...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build JSON files: %w", err)
 	}
@@ -196,7 +192,7 @@ func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) 
 		return nil, fmt.Errorf("unable to build JSON files: %w", err)
 	}
 
-	driver, err := NewJSONPackagesDriver(jsonFiles, bazelJsonBuilder.PathResolver())
+	driver, err := NewJSONPackagesDriver(s.params.WorkspaceRoot, jsonFiles, bazelJsonBuilder.PathResolver())
 	if err != nil {
 		return nil, fmt.Errorf("unable to load JSON files: %w", err)
 	}

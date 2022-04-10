@@ -18,7 +18,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"path/filepath"
 )
 
 func getenvDefault(key, defaultValue string) string {
@@ -34,13 +33,6 @@ func concatStringsArrays(values ...[]string) []string {
 		ret = append(ret, v...)
 	}
 	return ret
-}
-
-func ensureAbsolutePathFromWorkspace(path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(workspaceRoot, path)
 }
 
 func signalContext(parentCtx context.Context, signals ...os.Signal) (ctx context.Context, stop context.CancelFunc) {
