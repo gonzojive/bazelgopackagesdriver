@@ -90,6 +90,9 @@ type expirationState struct {
 	ongoingActivityCount int
 }
 
+// NewIdlenessMonitor returns a new idleness monitor that will call
+// idlePeriodElapsed soon after idlenessPeriod has elapsed since the last call
+// to MarkActive or MarkContinousActivity.
 func NewIdlenessMonitor(idlePeriod time.Duration, idlePeriodElapsed func()) *Tracker {
 	done := make(chan struct{})
 	timer := time.NewTimer(idlePeriod)
