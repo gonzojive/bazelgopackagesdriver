@@ -47,6 +47,7 @@ var (
 	serverMode     = flag.String("mode", "normal", "Oneof 'server', 'client', 'normal'; If 'server,' start in gRPC server rather than in command line driver mode; if 'client', connects to the server at the given port.")
 	grpcPort       = flag.Int("grpc_port", 50051, "The server port")
 	lameduckPeriod = flag.Duration("lameduck_duration", time.Second*5, "Time to wait for the server to shut down gracefully if sent a signal.")
+	idlePeriod     = flag.Duration("idle_duration", time.Minute*5, "If this period elapses between requests, the server shuts down.")
 )
 
 func main() {
@@ -58,6 +59,7 @@ func main() {
 func run() error {
 	flag.Parse()
 	glog.Infof("bazelgopackagesdriver started with mode=%q, port=%d", *serverMode, *grpcPort)
+	cmdutil.LogFlags()
 	go func() {
 		for _ = range time.Tick(time.Second * 2) {
 			glog.Flush()

@@ -173,7 +173,7 @@ func startServer(ctx context.Context) (pb.GoPackagesDriverServiceClient, io.Clos
 		return nil, nil, fmt.Errorf("failed to find a port for starting the gRPC server: %w", err)
 	}
 
-	cmd := exec.Command("bazelgopackagesdriver",
+	cmd := exec.Command("nohup", "bazelgopackagesdriver",
 		"--mode", "server",
 		"--grpc_port", strconv.Itoa(serverPort),
 	)

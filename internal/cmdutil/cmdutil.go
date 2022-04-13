@@ -2,11 +2,15 @@ package cmdutil
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 // LookupEnvOrDefault returns os.LookupEnv(key) or defaultValue if the key is
@@ -89,4 +93,10 @@ func withCustomCancelErr(parent context.Context) (ctx context.Context, cancelWit
 		outputCtx.err = err
 		simpleCancel()
 	}
+}
+
+func LogFlags() {
+	flag.Parse()
+	glog.Infof("startup flags:\n%s", strings.Join(os.Args, "\n"))
+	glog.Flush()
 }
