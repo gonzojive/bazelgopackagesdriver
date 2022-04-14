@@ -27,6 +27,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gonzojive/bazelgopackagesdriver/internal/cmdutil"
 	"github.com/gonzojive/bazelgopackagesdriver/internal/configuration"
+	"github.com/gonzojive/bazelgopackagesdriver/internal/idleness"
 	"github.com/gonzojive/bazelgopackagesdriver/protocol"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -78,7 +79,25 @@ func run() error {
 			return fmt.Errorf("failed to listen on --grpc_port: %w", err)
 		}
 
-		s := grpc.NewServer()
+		var serverOpts []grpc.ServerOption
+		var shutdownServer func()
+
+		if *idlePeriod > 0 {
+			idlenessTracker := idleness.NewIdlenessMonitor(*idlePeriod, func() {
+				if shutdownServer == nil {
+					return
+				}
+				shutdownServer()
+			})
+			defer idlenessTracker.Close()
+			serverOpts = append(serverOpts, grpc.UnaryInterceptor(idlenessTracker.UnaryInterceptor()))
+		}
+
+		s := grpc.NewServer(serverOpts...)
+		shutdownServer = func() {
+			glog.Infof("shutting down server due to idleness")
+			s.GracefulStop()
+		}
 		server, err := startServer(ctx, params)
 		if err != nil {
 			return fmt.Errorf("failed to start gopackagesdriver server: %w", err)
