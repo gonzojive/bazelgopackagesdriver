@@ -112,7 +112,8 @@ func (b *BazelJSONBuilder) query(ctx context.Context, query string) ([]string, e
 }
 
 func (b *BazelJSONBuilder) Build(ctx context.Context, mode protocol.LoadMode) ([]string, error) {
-	labels, err := b.query(ctx, b.queryFromRequests(b.requests...))
+	query := b.queryFromRequests(b.requests...)
+	labels, err := b.query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
