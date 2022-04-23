@@ -73,6 +73,9 @@ func run() error {
 	params := configuration.FromEnv()
 
 	if *serverMode == "server" {
+		if params.WorkspaceRoot == "" {
+			return fmt.Errorf("must specify workspace root using env variable GOPACKAGESDRIVER_BUILD_WORKSPACE_DIRECTORY or BUILD_WORKSPACE_DIRECTORY")
+		}
 		glog.Infof("gRPC server starting up at %d", *grpcPort)
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpcPort))
 		if err != nil {
@@ -264,6 +267,7 @@ func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("internal error encoding JSON: %w", err)
 	}
+	glog.Infof("responding with JSON:\n  %s", string(respJSONBytes))
 	return &pb.LoadPackagesResponse{
 		RawJson: string(respJSONBytes),
 	}, nil

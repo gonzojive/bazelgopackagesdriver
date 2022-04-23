@@ -24,6 +24,17 @@ message CheckStatusResponse {
 message LoadPackagesRequest {
     repeated string queries = 1;
     uint64 load_mode = 2;
+    EnvParams env_params = 3;
+}
+
+message EnvParams {
+    string rules_go_repository_name = 1;
+	string bazel_bin = 2;
+	repeated string bazel_flags = 3;
+	repeated string bazel_query_flags = 4;
+	string bazel_query_scope = 5;
+	repeated string bazel_build_flags = 6;
+	string workspace_root = 7;
 }
 
 // The GOPACKAGESDRIVER response object.

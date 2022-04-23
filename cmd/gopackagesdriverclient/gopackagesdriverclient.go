@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -47,17 +46,8 @@ const (
 )
 
 var (
-	// It seems https://github.com/bazelbuild/bazel/issues/3115 isn't fixed when specifying
-	// the aspect from the command line. Use this trick in the mean time.
-	rulesGoRepositoryName = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_RULES_GO_REPOSITORY_NAME", "@io_bazel_rules_go")
-	bazelBin              = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL", "bazel")
-	bazelFlags            = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_FLAGS"))
-	bazelQueryFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_QUERY_FLAGS"))
-	bazelQueryScope       = cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", "")
-	bazelBuildFlags       = strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_BUILD_FLAGS"))
-	workspaceRoot         = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-	serverAddr            = os.Getenv("GOPACKAGESDRIVER_SERVER_ADDR") // If missing, looks for a config file
-	emptyResponse         = &protocol.DriverResponse{
+	serverAddr    = os.Getenv("GOPACKAGESDRIVER_SERVER_ADDR") // If missing, looks for a config file
+	emptyResponse = &protocol.DriverResponse{
 		NotHandled: false,
 		Sizes:      types.SizesFor("gc", "amd64").(*types.StdSizes),
 		Roots:      []string{},
@@ -104,8 +94,9 @@ func run() (*protocol.DriverResponse, error) {
 
 	// Contact the server and print out its response.
 	respProto, err := c.LoadPackages(ctx, &pb.LoadPackagesRequest{
-		Queries:  queries,
-		LoadMode: uint64(request.Mode),
+		Queries:   queries,
+		LoadMode:  uint64(request.Mode),
+		EnvParams: configuration.FromEnv().Proto(),
 	})
 	if err != nil {
 		_, healthCheckErr := c.CheckStatus(ctx, &pb.CheckStatusRequest{})

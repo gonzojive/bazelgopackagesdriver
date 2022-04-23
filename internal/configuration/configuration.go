@@ -36,8 +36,25 @@ type Params struct {
 	WorkspaceRoot         string
 }
 
+func (p *Params) Proto() *pb.EnvParams {
+	return &pb.EnvParams{
+		RulesGoRepositoryName: p.RulesGoRepositoryName,
+		BazelBin:              p.BazelBin,
+		BazelFlags:            p.BazelFlags,
+		BazelQueryFlags:       p.BazelQueryFlags,
+		BazelQueryScope:       p.BazelQueryScope,
+		BazelBuildFlags:       p.BazelBuildFlags,
+		WorkspaceRoot:         p.WorkspaceRoot,
+	}
+}
+
 // FromEnv returns a *Params object based on os.Env values.
 func FromEnv() *Params {
+	// Workspace root if the binary is run using bazel run. See https://docs.bazel.build/versions/main/user-manual.html#run.
+	workspaceRootFromBazelRun := os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	// Let GOPACKAGESDRIVER_BUILD_WORKSPACE_DIRECTORY override BUILD_WORKSPACE_DIRECTORY... probably not necessary.
+	workspaceRoot := cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BUILD_WORKSPACE_DIRECTORY", workspaceRootFromBazelRun)
+
 	return &Params{
 		RulesGoRepositoryName: cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_RULES_GO_REPOSITORY_NAME", "@io_bazel_rules_go"),
 		BazelBin:              cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL", "bazel"),
@@ -45,7 +62,7 @@ func FromEnv() *Params {
 		BazelQueryFlags:       strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_QUERY_FLAGS")),
 		BazelQueryScope:       cmdutil.LookupEnvOrDefault("GOPACKAGESDRIVER_BAZEL_QUERY_SCOPE", ""),
 		BazelBuildFlags:       strings.Fields(os.Getenv("GOPACKAGESDRIVER_BAZEL_BUILD_FLAGS")),
-		WorkspaceRoot:         os.Getenv("BUILD_WORKSPACE_DIRECTORY"),
+		WorkspaceRoot:         workspaceRoot,
 	}
 }
 
