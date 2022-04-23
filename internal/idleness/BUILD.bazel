@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "idleness",
+    srcs = ["idleness.go"],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/internal/idleness",
+    visibility = ["//:__subpackages__"],
+    deps = ["@org_golang_google_grpc//:go_default_library"],
+)
+
+go_test(
+    name = "idleness_test",
+    srcs = ["idleness_test.go"],
+    embed = [":idleness"],
+)

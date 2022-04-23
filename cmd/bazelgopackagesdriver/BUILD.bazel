@@ -36,7 +36,13 @@ go_library(
     importpath = "github.com/gonzojive/bazelgopackagesdriver/cmd/bazelgopackagesdriver",
     visibility = ["//visibility:private"],
     deps = [
+        "//internal/cmdutil",
+        "//internal/configuration",
+        "//internal/idleness",
+        "//proto/gopackagesdriverpb",
         "//protocol",
         "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_x_sync//errgroup:go_default_library",
     ],
 )

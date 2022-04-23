@@ -7,9 +7,16 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//internal/cmdutil",
+        "//internal/configuration",
+        "//proto/gopackagesdriverpb",
         "//protocol",
         "@com_github_golang_glog//:go_default_library",
         "@com_github_jbenet_go_context//io:go_default_library",
+        "@com_github_johnsiilver_golib//development/portpicker:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
     ],
 )
 
