@@ -1,6 +1,16 @@
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
+# gazelle:map_kind go_test go_bazel_test @io_bazel_rules_go//go/tools/bazel_testing:def.bzl
+
 go_bazel_test(
     name = "workspace_test_test",
     srcs = ["workspace_test.go"],
+    data = [
+        "//cmd/gopackagesdriverclient",
+    ],
+    deps = [
+        "@com_github_phst_runfiles//:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "@org_golang_x_tools//go/packages",
+    ],
 )

@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
+
+go_bazel_test(
+    name = "workspace_ext_dep_test_test",
+    srcs = ["workspace_ext_dep_test.go"],
+    rule_files = [
+        #"@io_bazel_rules_go//:all_files",
+        #"@com_google_protobuf//:all_files",
+    ],
+    tags = [
+        "block-network",
+    ],
+    deps = ["@io_bazel_rules_go//go/tools/bazel_testing:go_default_library"],
+)

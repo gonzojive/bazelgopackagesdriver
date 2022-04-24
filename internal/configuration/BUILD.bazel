@@ -8,7 +8,7 @@ go_library(
     deps = [
         "//internal/cmdutil",
         "//proto/gopackagesdriverpb",
-        "@com_github_golang_glog//:go_default_library",
-        "@org_golang_google_protobuf//encoding/prototext:go_default_library",
+        "@com_github_golang_glog//:glog",
+        "@org_golang_google_protobuf//encoding/prototext",
     ],
 )
