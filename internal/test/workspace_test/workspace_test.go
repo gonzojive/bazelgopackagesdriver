@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -13,7 +15,7 @@ import (
 )
 
 const (
-	driverRunfilesPath = "cmd/bazelgopackagesdriver/bazelgopackagesdriver"
+	driverRunfilesPath = "cmd/bazelgopackagesdriver/bazelgopackagesdriver_/bazelgopackagesdriver"
 )
 
 func TestMain(m *testing.M) {
@@ -84,11 +86,23 @@ func TestPackagesLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get path of driver: %v", err)
 	}
+	flags := cmd.Args[1:]
+	workspaceDir, err := os.Getwd() // This works because bazel_testing's main function changes the working directory to the workspace dir.
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
 	cfgEnv := []string{
-		//fmt.Sprintf("GOPACKAGESDRIVER=%s", driver),
-		fmt.Sprintf("GOPACKAGESDRIVER=%s", "/bloop"),
+		fmt.Sprintf("GOPACKAGESDRIVER=%s", driver),
+		fmt.Sprintf("GOPACKAGESDRIVER_BAZEL=%s", cmd.Path),
+		fmt.Sprintf("GOPACKAGESDRIVER_BAZEL_FLAGS=%s", strings.Join(flags, " ")),
+		fmt.Sprintf("GOPACKAGESDRIVER_BUILD_WORKSPACE_DIRECTORY=%s", workspaceDir),
 	}
 	t.Logf("got driver path %q", driver)
+	t.Logf("got bazel: %q", cmd.Path)
+	t.Logf("got bazel flags:\n  %s", strings.Join(flags, "\n  "))
+	t.Logf("got workspace directory: %q", workspaceDir)
+	//t.Logf("got env for bazel command:\n  %s", strings.Join(cmd.Env, "\n  "))
+	t.Logf("got bazel flags:\n  %s", strings.Join(flags, "\n  "))
 	packages, err := packages.Load(&packages.Config{
 		Dir: cmd.Dir,
 		Env: cfgEnv,
@@ -98,4 +112,11 @@ func TestPackagesLoad(t *testing.T) {
 		t.Fatalf("failed to load packages: %v", err)
 	}
 	t.Errorf("got %v packages", packages)
+}
+
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
 }

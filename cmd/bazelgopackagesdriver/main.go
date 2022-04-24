@@ -179,7 +179,7 @@ func runRegularMode(ctx context.Context, params *configuration.Params) (*protoco
 	}
 	glog.Infof("read driver request %v with queries %v", request, queries)
 
-	bazel, err := NewBazel(ctx, params.BazelBin, params.WorkspaceRoot)
+	bazel, err := NewBazel(ctx, params.BazelBin, params.WorkspaceRoot, params.BazelFlags)
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to create bazel instance: %w", err)
 	}
@@ -210,7 +210,7 @@ type server struct {
 
 func startServer(ctx context.Context, params *configuration.Params) (*server, error) {
 	s := &server{params: params}
-	if _, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot); err != nil {
+	if _, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot, s.params.BazelFlags); err != nil {
 		return nil, fmt.Errorf("unable to create bazel instance: %w", err)
 	}
 
@@ -242,7 +242,7 @@ func (s *server) LoadPackages(ctx context.Context, req *pb.LoadPackagesRequest) 
 	}
 	glog.Infof("read driver request %v with queries %v", request, req.GetQueries())
 
-	bazel, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot)
+	bazel, err := NewBazel(ctx, s.params.BazelBin, s.params.WorkspaceRoot, s.params.BazelFlags)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create bazel instance: %w", err)
 	}

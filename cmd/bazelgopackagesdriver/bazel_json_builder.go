@@ -94,7 +94,7 @@ func (b *BazelJSONBuilder) outputGroupsForMode(mode protocol.LoadMode) string {
 }
 
 func (b *BazelJSONBuilder) query(ctx context.Context, query string) ([]string, error) {
-	queryArgs := concatStringsArrays(b.params.BazelFlags, b.params.BazelQueryFlags, []string{
+	queryArgs := concatStringsArrays(b.params.BazelQueryFlags, []string{
 		"--ui_event_filters=-info,-stderr",
 		"--noshow_progress",
 		"--order_output=no",
@@ -129,7 +129,7 @@ func (b *BazelJSONBuilder) Build(ctx context.Context, mode protocol.LoadMode) ([
 		"--aspects=" + b.params.RulesGoRepositoryName + "//go/tools/gopackagesdriver:aspect.bzl%go_pkg_info_aspect",
 		"--output_groups=" + b.outputGroupsForMode(mode),
 		"--keep_going", // Build all possible packages
-	}, b.params.BazelFlags, b.params.BazelBuildFlags, labels)
+	}, b.params.BazelBuildFlags, labels)
 	files, err := b.bazel.Build(ctx, buildArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to bazel build %v: %w", buildArgs, err)

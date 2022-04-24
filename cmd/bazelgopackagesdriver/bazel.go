@@ -37,6 +37,8 @@ type Bazel struct {
 	bazelBin      string
 	workspaceRoot string
 	info          map[string]string
+	// Passed to bazel as flags before the command. i.e. "bazel <args...> command <command_args...>"
+	args []string
 }
 
 // Minimal BEP structs to access the build outputs
@@ -49,10 +51,11 @@ type BEPNamedSet struct {
 	} `json:"namedSetOfFiles"`
 }
 
-func NewBazel(ctx context.Context, bazelBin, workspaceRoot string) (*Bazel, error) {
+func NewBazel(ctx context.Context, bazelBin, workspaceRoot string, args []string) (*Bazel, error) {
 	b := &Bazel{
 		bazelBin:      bazelBin,
 		workspaceRoot: workspaceRoot,
+		args:          args,
 	}
 	if err := b.fillInfo(ctx); err != nil {
 		return nil, fmt.Errorf("unable to query bazel info: %w", err)
@@ -62,7 +65,7 @@ func NewBazel(ctx context.Context, bazelBin, workspaceRoot string) (*Bazel, erro
 
 func (b *Bazel) fillInfo(ctx context.Context) error {
 	b.info = map[string]string{}
-	output, err := b.run(ctx, "info")
+	output, err := b.run(ctx, "info", nil)
 	if err != nil {
 		return err
 	}
@@ -74,13 +77,14 @@ func (b *Bazel) fillInfo(ctx context.Context) error {
 	return nil
 }
 
-func (b *Bazel) run(ctx context.Context, command string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, b.bazelBin, append([]string{
-		command,
-		"--tool_tag=" + toolTag,
-		"--ui_actions_shown=0",
-	}, args...)...)
+func (b *Bazel) run(ctx context.Context, command string, toolArgs []string) (string, error) {
+	args := append([]string{}, b.args...)
+	args = append(args, command)
+	args = append(args, "--tool_tag="+toolTag, "--ui_actions_shown=0")
+	args = append(args, toolArgs...)
+	cmd := exec.CommandContext(ctx, b.bazelBin, args...)
 	fmt.Fprintln(os.Stderr, "Running:", cmd.Args)
+	fmt.Fprintln(os.Stderr, "Tool Args: ", toolArgs)
 	cmd.Dir = b.WorkspaceRoot()
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()
@@ -102,7 +106,7 @@ func (b *Bazel) Build(ctx context.Context, args ...string) ([]string, error) {
 		"--build_event_json_file=" + jsonFile.Name(),
 		"--build_event_json_file_path_conversion=no",
 	}, args...)
-	if _, err := b.run(ctx, "build", args...); err != nil {
+	if _, err := b.run(ctx, "build", args); err != nil {
 		// Ignore a regular build failure to get partial data.
 		// See https://docs.bazel.build/versions/main/guide.html#what-exit-code-will-i-get on
 		// exit codes.
@@ -134,7 +138,7 @@ func (b *Bazel) Build(ctx context.Context, args ...string) ([]string, error) {
 }
 
 func (b *Bazel) Query(ctx context.Context, args ...string) ([]string, error) {
-	output, err := b.run(ctx, "query", args...)
+	output, err := b.run(ctx, "query", args)
 	if err != nil {
 		return nil, fmt.Errorf("bazel query failed: %w", err)
 	}
@@ -142,7 +146,7 @@ func (b *Bazel) Query(ctx context.Context, args ...string) ([]string, error) {
 }
 
 func (b *Bazel) QueryLabels(ctx context.Context, args ...string) ([]string, error) {
-	output, err := b.run(ctx, "query", args...)
+	output, err := b.run(ctx, "query", args)
 	if err != nil {
 		return nil, fmt.Errorf("bazel query failed: %w", err)
 	}
