@@ -6,10 +6,10 @@ go_bazel_test(
     name = "workspace_test_test",
     srcs = ["workspace_test.go"],
     data = [
-        "//cmd/gopackagesdriverclient",
+        "//cmd/bazelgopackagesdriver",
     ],
     deps = [
-        "@com_github_phst_runfiles//:go_default_library",
+        "//internal/runfiles",
         "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
         "@org_golang_x_tools//go/packages",
     ],

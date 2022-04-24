@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
-	"github.com/phst/runfiles"
+	"github.com/gonzojive/bazelgopackagesdriver/internal/runfiles"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -80,17 +80,20 @@ func TestFunctionalWorkspace(t *testing.T) {
 
 func TestPackagesLoad(t *testing.T) {
 	cmd := bazel_testing.BazelCmd()
-	driver, err := runfiles.Path(driverRunfilesPath)
+	driver, err := runfiles.Runfile(driverRunfilesPath)
 	if err != nil {
 		t.Fatalf("failed to get path of driver: %v", err)
 	}
 	cfgEnv := []string{
-		fmt.Sprintf("GOPACKAGESDRIVER=blah", driver),
+		//fmt.Sprintf("GOPACKAGESDRIVER=%s", driver),
+		fmt.Sprintf("GOPACKAGESDRIVER=%s", "/bloop"),
 	}
+	t.Logf("got driver path %q", driver)
 	packages, err := packages.Load(&packages.Config{
 		Dir: cmd.Dir,
 		Env: cfgEnv,
 	}, "example.xyz/...")
+
 	if err != nil {
 		t.Fatalf("failed to load packages: %v", err)
 	}

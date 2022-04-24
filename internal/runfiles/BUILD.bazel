@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "runfiles",
+    srcs = ["runfiles.go"],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/internal/runfiles",
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go/tools/bazel:go_default_library"],
+)
