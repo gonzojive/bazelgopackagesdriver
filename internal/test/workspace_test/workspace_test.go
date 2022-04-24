@@ -15,12 +15,48 @@ import (
 )
 
 const (
-	driverRunfilesPath = "cmd/bazelgopackagesdriver/bazelgopackagesdriver_/bazelgopackagesdriver"
+	driverRunfilesPath   = "cmd/bazelgopackagesdriver/bazelgopackagesdriver_/bazelgopackagesdriver"
+	bazelBinRunfilesPath = "external/build_bazel_bazel_5_1_1_binary/file/bazel_for_integration_testing"
+
+	// typicalLoadMode matches what is commonly passed to packages.Load by
+	// gopls. See
+	// https://github.com/golang/tools/blob/master/internal/lsp/cache/snapshot.go.
+	typicalLoadMode = packages.NeedName |
+		packages.NeedFiles |
+		packages.NeedCompiledGoFiles |
+		packages.NeedImports |
+		packages.NeedDeps |
+		packages.NeedTypesSizes |
+		packages.NeedModule
 )
 
 func TestMain(m *testing.M) {
 	bazel_testing.TestMain(m, bazel_testing.Args{
 		Main: `
+-- WORKSPACE --
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "io_bazel_rules_go",
+    sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+    ],
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+# Bug in rules_go for 1.18: https://github.com/bazelbuild/rules_go/issues/3110
+go_register_toolchains(version = "1.17")
+
+-- BUILD.bazel --
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+go_test(
+    name = "fail_fast_test",
+    srcs = ["fail_fast_test.go"],
+)
 -- BUILD.bazel --
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
 go_test(
@@ -86,27 +122,36 @@ func TestPackagesLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get path of driver: %v", err)
 	}
+	bazelBin, err := runfiles.Runfile(bazelBinRunfilesPath)
+	if err != nil {
+		t.Fatalf("failed to get path of bazel binary: %v", err)
+	}
+	cmd.Args[0] = bazelBin
+	cmd.Path = bazelBin
+
 	flags := cmd.Args[1:]
 	workspaceDir, err := os.Getwd() // This works because bazel_testing's main function changes the working directory to the workspace dir.
 	if err != nil {
 		t.Fatalf("failed to get working directory: %v", err)
 	}
-	cfgEnv := []string{
+	cfgEnv := append([]string{}, cmd.Env...)
+	cfgEnv = append(cfgEnv,
 		fmt.Sprintf("GOPACKAGESDRIVER=%s", driver),
 		fmt.Sprintf("GOPACKAGESDRIVER_BAZEL=%s", cmd.Path),
 		fmt.Sprintf("GOPACKAGESDRIVER_BAZEL_FLAGS=%s", strings.Join(flags, " ")),
 		fmt.Sprintf("GOPACKAGESDRIVER_BUILD_WORKSPACE_DIRECTORY=%s", workspaceDir),
-	}
+	)
 	t.Logf("got driver path %q", driver)
 	t.Logf("got bazel: %q", cmd.Path)
 	t.Logf("got bazel flags:\n  %s", strings.Join(flags, "\n  "))
 	t.Logf("got workspace directory: %q", workspaceDir)
-	//t.Logf("got env for bazel command:\n  %s", strings.Join(cmd.Env, "\n  "))
-	t.Logf("got bazel flags:\n  %s", strings.Join(flags, "\n  "))
+
+	os.Setenv("GOPACKAGESPRINTDRIVERERRORS", "1") // Rquired to displays stderr from the driver.
 	packages, err := packages.Load(&packages.Config{
-		Dir: cmd.Dir,
-		Env: cfgEnv,
-	}, "example.xyz/...")
+		Dir:  workspaceDir,
+		Env:  cfgEnv,
+		Mode: typicalLoadMode, //
+	}, "file=example_test.go")
 
 	if err != nil {
 		t.Fatalf("failed to load packages: %v", err)

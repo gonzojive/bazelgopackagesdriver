@@ -84,7 +84,6 @@ func (b *Bazel) run(ctx context.Context, command string, toolArgs []string) (str
 	args = append(args, toolArgs...)
 	cmd := exec.CommandContext(ctx, b.bazelBin, args...)
 	fmt.Fprintln(os.Stderr, "Running:", cmd.Args)
-	fmt.Fprintln(os.Stderr, "Tool Args: ", toolArgs)
 	cmd.Dir = b.WorkspaceRoot()
 	cmd.Stderr = os.Stderr
 	output, err := cmd.Output()

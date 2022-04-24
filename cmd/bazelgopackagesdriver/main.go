@@ -35,6 +35,8 @@ import (
 	pb "github.com/gonzojive/bazelgopackagesdriver/proto/gopackagesdriverpb"
 )
 
+const debugDisallowEmptyResponse = false // DO NOT SUBMIT
+
 var (
 	// It seems https://github.com/bazelbuild/bazel/issues/3115 isn't fixed when specifying
 	// the aspect from the command line. Use this trick in the mean time.
@@ -177,7 +179,7 @@ func runRegularMode(ctx context.Context, params *configuration.Params) (*protoco
 	if err != nil {
 		return emptyResponse, fmt.Errorf("unable to read request: %w", err)
 	}
-	glog.Infof("read driver request %v with queries %v", request, queries)
+	fmt.Fprintf(os.Stderr, "read driver request %v with queries %v", request, queries)
 
 	bazel, err := NewBazel(ctx, params.BazelBin, params.WorkspaceRoot, params.BazelFlags)
 	if err != nil {
@@ -199,7 +201,11 @@ func runRegularMode(ctx context.Context, params *configuration.Params) (*protoco
 		return emptyResponse, fmt.Errorf("unable to load JSON files: %w", err)
 	}
 
-	return driver.Match(queries...), nil
+	resp := driver.Match(queries...)
+	if debugDisallowEmptyResponse && len(resp.Packages) == 0 {
+		return nil, fmt.Errorf("got no packages")
+	}
+	return resp, nil
 }
 
 type server struct {

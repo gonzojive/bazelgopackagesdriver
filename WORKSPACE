@@ -607,3 +607,54 @@ protobuf_core_deps()
 load("@build_stack_rules_proto//deps:go_core_deps.bzl", "go_core_deps")
 
 go_core_deps()
+
+# See https://github.com/bazelbuild/bazel-integration-testing
+http_archive(
+    name = "build_bazel_integration_testing",
+    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/3a6136e8f6287b04043217d94d97ba17edcb7feb.zip",
+    type = "zip",
+    strip_prefix= "bazel-integration-testing-3a6136e8f6287b04043217d94d97ba17edcb7feb",
+    sha256 = "bfc43a94d42e08c89a26a4711ea396a0a594bd5d55394d76aae861b299628dca",
+)
+
+
+load("@build_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
+#depend on the Bazel binaries, also accepts an array of versions
+bazel_binaries()
+
+
+# The following causes problems because the workspace deosn't define all the
+# necessary repositories.
+http_archive(
+    name = "build_bazel_bazel_5_1_1",
+    url = "https://github.com/bazelbuild/bazel/archive/refs/tags/5.1.1.zip",
+    type = "zip",
+    sha256 = "23e3274bba7a8d5a907eb05222e234336633840be640e9900354f54d86c96532",
+    strip_prefix= "bazel-5.1.1",
+    build_file_content = """
+filegroup(
+    name = "binaries-for-integration-testing",
+    visibility = ["//visibility:public"],
+    srcs = [
+        #"//scripts/packages:bazel-sh-with-jdk",
+        "//src:bazel",
+    ],
+)
+    """
+)
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+# Download the linux binary for bazel. This is loaded by the test.
+# 
+# See https://bazel.build/rules/lib/repo/http#http_file
+http_file(
+    name = "build_bazel_bazel_5_1_1_binary",
+    urls = [
+        "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
+    ],
+    sha256 = "5e126060d9169b462a18e97435356c3b3712d20fdbef9ac7609016838a90e7d3",
+    executable = True,
+    downloaded_file_path = "bazel_for_integration_testing",
+)
+

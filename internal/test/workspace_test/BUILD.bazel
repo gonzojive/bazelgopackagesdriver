@@ -2,11 +2,18 @@ load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
 # gazelle:map_kind go_test go_bazel_test @io_bazel_rules_go//go/tools/bazel_testing:def.bzl
 
+# For now, we use go_bazel_test because it's supported by rules_go.
+#
+# Howver, this rule isn't great because it requires running bazel in local mode
+# (non-hermetic). See https://github.com/bazelbuild/rules_go/issues/1959 for
+# discussion.
 go_bazel_test(
     name = "workspace_test_test",
     srcs = ["workspace_test.go"],
     data = [
         "//cmd/bazelgopackagesdriver",
+        #"@build_bazel_bazel_0_23_2//:bazel_binary",
+        "@build_bazel_bazel_5_1_1_binary//file",
     ],
     deps = [
         "//internal/runfiles",
