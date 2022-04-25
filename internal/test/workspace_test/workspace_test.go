@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 	"github.com/gonzojive/bazelgopackagesdriver/internal/runfiles"
+	"github.com/gonzojive/bazelgopackagesdriver/internal/test/bazel_testing" // forked from "github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 	"golang.org/x/tools/go/packages"
 )
 

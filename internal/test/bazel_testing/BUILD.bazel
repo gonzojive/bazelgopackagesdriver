@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bazel_testing",
+    srcs = ["bazel_testing.go"],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/internal/test/bazel_testing",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_x_tools//txtar",
+    ],
+)

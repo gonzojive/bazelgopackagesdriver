@@ -1,13 +1,14 @@
-load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
+#load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
-# gazelle:map_kind go_test go_bazel_test @io_bazel_rules_go//go/tools/bazel_testing:def.bzl
+# used to have gazelle:map_kind go_test go_bazel_test @io_bazel_rules_go//go/tools/bazel_testing:def.bzl
 
 # For now, we use go_bazel_test because it's supported by rules_go.
 #
 # Howver, this rule isn't great because it requires running bazel in local mode
 # (non-hermetic). See https://github.com/bazelbuild/rules_go/issues/1959 for
 # discussion.
-go_bazel_test(
+go_test(
     name = "workspace_test_test",
     srcs = ["workspace_test.go"],
     data = [
@@ -17,7 +18,10 @@ go_bazel_test(
     ],
     deps = [
         "//internal/runfiles",
-        "@io_bazel_rules_go//go/tools/bazel_testing:go_default_library",
+        "//internal/test/bazel_testing",
         "@org_golang_x_tools//go/packages",
     ],
+    env = {
+        "BAZEL_TESTING_USE_TMP_FOR_CACHE": "1", # Inefficient, but required for hermetic testing.
+    },
 )
