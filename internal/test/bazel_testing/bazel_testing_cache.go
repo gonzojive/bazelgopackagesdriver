@@ -44,18 +44,27 @@ func (cm *CacheManifest) check() error {
 		if df.ChecksumType != "sha256" {
 			errors = append(errors, fmt.Sprintf("DownloadedFile[%d] invalid: ChecksumType got %q, must be 'sha256'", i, df.ChecksumType))
 		}
+		if df.Checksum == "" {
+			errors = append(errors, fmt.Sprintf("DownloadedFile[%d] invalid: empty Checksum value", i))
+		}
+		if df.RepoRelativePath == "" {
+			errors = append(errors, fmt.Sprintf("DownloadedFile[%d] invalid: empty RepoRelativePath value", i))
+		}
 	}
 	if len(errors) == 0 {
 		return nil
 	}
-	return fmt.Errorf("%d errors with CacheManifest:\n  %s", strings.Join(errors, "\n  "))
+	return fmt.Errorf("%d errors with CacheManifest:\n  %s", len(errors), strings.Join(errors, "\n  "))
 }
 
 // DownloadedFile is a single entry in the cache.
 type DownloadedFile struct {
 	// ChecksumType is always "sha256" for now
-	ChecksumType     string
-	Checksum         string
-	URLs             []string
+	ChecksumType string
+	// The value of the checksum.
+	Checksum string
+	// List of URLs from which the file could be downloaded.
+	URLs []string
+	// Path of the file relative to the manifest.
 	RepoRelativePath string
 }
