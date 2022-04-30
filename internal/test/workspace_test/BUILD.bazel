@@ -14,14 +14,23 @@ go_test(
     data = [
         "//cmd/bazelgopackagesdriver",
         #"@build_bazel_bazel_0_23_2//:bazel_binary",
-        "@build_bazel_bazel_5_1_1_binary//file",
+        #"@build_bazel_bazel_5_1_1_binary//file",
+        "@build_bazel_bazel_5_1_0//:bazel_binary",
+        #"@io_bazel//src:bazel",
+        ":debug-bazel",
+        "@io_bazel_rules_go_zip//file",
+        #"@my_filez//:my_filez",
+        "@my_filez//:filegroup",
+    ],
+    env = {
+        "BAZEL_TESTING_USE_TMP_FOR_CACHE": "1",  # Inefficient, but required for hermetic testing.
+    },
+    tags = [
+        "block-network",
     ],
     deps = [
         "//internal/runfiles",
         "//internal/test/bazel_testing",
         "@org_golang_x_tools//go/packages",
     ],
-    env = {
-        "BAZEL_TESTING_USE_TMP_FOR_CACHE": "1", # Inefficient, but required for hermetic testing.
-    },
 )

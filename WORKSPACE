@@ -221,8 +221,8 @@ go_repository(
 go_repository(
     name = "com_github_google_go_cmp",
     importpath = "github.com/google/go-cmp",
-    sum = "h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=",
-    version = "v0.5.5",
+    sum = "h1:e6P7q2lk1O+qJJb4BtCQXlK8vWEO8V1ZeuEdJNOqZyg=",
+    version = "v0.5.8",
 )
 
 go_repository(
@@ -585,9 +585,9 @@ go_repository(
 # gazelle:repository go_repository name=com_github_phst_runfiles importpath=github.com/phst/runfiles
 http_archive(
     name = "com_github_phst_runfiles",
-    urls = ["https://github.com/phst/runfiles/archive/f8065aa0cb28b5cc0fffa7d0b5e9ea1a92add4bb.zip"],
     sha256 = "8f0502d14cc35e8857d67ac02a3b8d46a496bb7e3ddf723ebb73ce71c4c0cd6d",
     strip_prefix = "runfiles-f8065aa0cb28b5cc0fffa7d0b5e9ea1a92add4bb",
+    urls = ["https://github.com/phst/runfiles/archive/f8065aa0cb28b5cc0fffa7d0b5e9ea1a92add4bb.zip"],
 )
 
 register_toolchains("@build_stack_rules_proto//toolchain:standard")
@@ -611,50 +611,93 @@ go_core_deps()
 # See https://github.com/bazelbuild/bazel-integration-testing
 http_archive(
     name = "build_bazel_integration_testing",
-    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/3a6136e8f6287b04043217d94d97ba17edcb7feb.zip",
-    type = "zip",
-    strip_prefix= "bazel-integration-testing-3a6136e8f6287b04043217d94d97ba17edcb7feb",
     sha256 = "bfc43a94d42e08c89a26a4711ea396a0a594bd5d55394d76aae861b299628dca",
+    strip_prefix = "bazel-integration-testing-3a6136e8f6287b04043217d94d97ba17edcb7feb",
+    type = "zip",
+    url = "https://github.com/bazelbuild/bazel-integration-testing/archive/3a6136e8f6287b04043217d94d97ba17edcb7feb.zip",
 )
 
-
-load("@build_bazel_integration_testing//tools:repositories.bzl", "bazel_binaries")
-#depend on the Bazel binaries, also accepts an array of versions
-bazel_binaries()
-
-
-# The following causes problems because the workspace deosn't define all the
-# necessary repositories.
 http_archive(
-    name = "build_bazel_bazel_5_1_1",
-    url = "https://github.com/bazelbuild/bazel/archive/refs/tags/5.1.1.zip",
-    type = "zip",
-    sha256 = "23e3274bba7a8d5a907eb05222e234336633840be640e9900354f54d86c96532",
-    strip_prefix= "bazel-5.1.1",
-    build_file_content = """
-filegroup(
-    name = "binaries-for-integration-testing",
-    visibility = ["//visibility:public"],
-    srcs = [
-        #"//scripts/packages:bazel-sh-with-jdk",
-        "//src:bazel",
+    name = "contrib_rules_bazel_integration_test",
+    sha256 = "ab9bbf776b5874f8a02f639fec2fbb3e3eefa4403cf861ae00d7c7e4d757f9ff",
+    strip_prefix = "rules_bazel_integration_test-0.6.2",
+    urls = [
+        "http://github.com/bazel-contrib/rules_bazel_integration_test/archive/v0.6.2.tar.gz",
     ],
 )
-    """
-)
+
+load("@contrib_rules_bazel_integration_test//bazel_integration_test:deps.bzl", "bazel_integration_test_rules_dependencies")
+
+bazel_integration_test_rules_dependencies()
+
+load("@cgrindel_bazel_starlib//:deps.bzl", "bazel_starlib_dependencies")
+
+bazel_starlib_dependencies()
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 # Download the linux binary for bazel. This is loaded by the test.
-# 
+#
 # See https://bazel.build/rules/lib/repo/http#http_file
 http_file(
     name = "build_bazel_bazel_5_1_1_binary",
+    downloaded_file_path = "bazel_for_integration_testing",
+    executable = True,
+    sha256 = "5e126060d9169b462a18e97435356c3b3712d20fdbef9ac7609016838a90e7d3",
     urls = [
         "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
     ],
-    sha256 = "5e126060d9169b462a18e97435356c3b3712d20fdbef9ac7609016838a90e7d3",
-    executable = True,
-    downloaded_file_path = "bazel_for_integration_testing",
 )
 
+load("//:bazel_versions.bzl", "SUPPORTED_BAZEL_VERSIONS")
+load("@contrib_rules_bazel_integration_test//bazel_integration_test:defs.bzl", "bazel_binaries")
+
+bazel_binaries(versions = SUPPORTED_BAZEL_VERSIONS)
+
+# Download the linux binary for bazel. This is loaded by the test.
+#
+# See https://bazel.build/rules/lib/repo/http#http_file
+http_file(
+    name = "io_bazel_rules_go_zip",
+    downloaded_file_path = "integration_testing_cache_entry",
+    executable = False,
+    sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+    urls = [
+        "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
+    ],
+)
+
+load("//internal/test/bazel_testing:cache.bzl", "http_files")
+
+http_files(
+    name = "my_filez",
+    srcs = {
+        "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c": [
+            "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
+        ],
+    },
+)
+
+http_files(
+    name = "my_filez2",
+    srcs = {
+        "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c": [
+            "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
+        ],
+    },
+)
+
+# local_repository(
+#     name = "io_bazel",
+#     path = "/home/red/code/bazel",
+# )
+
+# load("@io_bazel//:workspace.bzl", "bazel_deps")
+# load("@io_bazel//:workspace_loads.bzl", "bazel_deps2")
+
+# bazel_deps()
+# bazel_deps2()

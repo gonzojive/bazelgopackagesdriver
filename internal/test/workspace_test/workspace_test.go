@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	driverRunfilesPath   = "cmd/bazelgopackagesdriver/bazelgopackagesdriver_/bazelgopackagesdriver"
-	bazelBinRunfilesPath = "external/build_bazel_bazel_5_1_1_binary/file/bazel_for_integration_testing"
+	driverRunfilesPath = "cmd/bazelgopackagesdriver/bazelgopackagesdriver_/bazelgopackagesdriver"
+	//bazelBinRunfilesPath = "external/build_bazel_bazel_5_1_0/bazel"
+	bazelBinRunfilesPath = "internal/test/workspace_test/debug-bazel"
 
 	// typicalLoadMode matches what is commonly passed to packages.Load by
 	// gopls. See
@@ -31,7 +32,23 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	cacheEntry, err := runfiles.Runfile("external/io_bazel_rules_go_zip/file/integration_testing_cache_entry")
+	if err != nil {
+		panic(err)
+	}
+	contents, err := ioutil.ReadFile(cacheEntry)
+	if err != nil {
+		panic(fmt.Errorf("error reading %q: %w", err))
+	}
 	bazel_testing.TestMain(m, bazel_testing.Args{
+		CacheEntries: []bazel_testing.CacheEntry{
+			{
+				ChecksumType: "sha256",
+				Checksum:     "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+				//Contents:     ([]byte)("bad data"),
+				Contents: contents,
+			},
+		},
 		Main: `
 -- WORKSPACE --
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

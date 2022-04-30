@@ -80,6 +80,14 @@ type Args struct {
 	// all tests. If SetUp returns a non-nil error, execution is halted and
 	// tests cases are not executed.
 	SetUp func() error
+
+	CacheEntries []CacheEntry
+}
+
+type CacheEntry struct {
+	ChecksumType string
+	Checksum     string
+	Contents     []byte
 }
 
 // debug may be set to make the test print the test workspace path and stop
@@ -296,6 +304,11 @@ func setupWorkspace(args Args, files []string) (dir string, cleanup func() error
 	}
 	cleanups = append(cleanups, func() error { return os.RemoveAll(execDir) })
 
+	repoCacheDir := filepath.Join(cacheDir, "repocache")
+	if err := setupContentAddressableCache(repoCacheDir, args.CacheEntries); err != nil {
+		return "", cleanup, fmt.Errorf("error installing downloaded files into cache: %w", err)
+	}
+
 	// Create the workspace directory.
 	mainDir := filepath.Join(execDir, "main")
 	if err := os.MkdirAll(mainDir, 0777); err != nil {
@@ -304,12 +317,26 @@ func setupWorkspace(args Args, files []string) (dir string, cleanup func() error
 
 	// Create a .bazelrc file if GO_BAZEL_TEST_BAZELFLAGS is set.
 	// The test can override this with its own .bazelrc or with flags in commands.
+	bazelrcLines := []string{
+		fmt.Sprintf("common --repository_cache=%s", repoCacheDir),
+		fmt.Sprintf("common --logging=0"),
+		fmt.Sprintf("common --sandbox_debug"),
+		fmt.Sprintf("common --alsologtostderr"),
+	}
+	/* DO NOT SUBMIT
 	if flags := os.Getenv("GO_BAZEL_TEST_BAZELFLAGS"); flags != "" {
 		bazelrcPath := filepath.Join(mainDir, ".bazelrc")
 		content := "build " + flags
 		if err := ioutil.WriteFile(bazelrcPath, []byte(content), 0666); err != nil {
 			return "", cleanup, err
 		}
+	}
+	*/
+
+	bazelrcContents := strings.Join(bazelrcLines, "\n")
+	bazelrcPath := filepath.Join(mainDir, ".bazelrc")
+	if err := ioutil.WriteFile(bazelrcPath, []byte(bazelrcContents), 0666); err != nil {
+		return "", cleanup, fmt.Errorf("error writing .bazelrc: %w", err)
 	}
 
 	// Extract test files for the main workspace.
@@ -412,6 +439,22 @@ func setupWorkspace(args Args, files []string) (dir string, cleanup func() error
 	}
 
 	return mainDir, cleanup, nil
+}
+
+func setupContentAddressableCache(cacheDir string, entries []CacheEntry) error {
+	// See https://github.com/bazelbuild/bazel/blob/90fe1b2bb2604e2acb3db56f18a4532967aa1f89/src/main/java/com/google/devtools/build/lib/bazel/repository/cache/RepositoryCache.java#L93
+	for _, e := range entries {
+		fileDir := filepath.Join(cacheDir, "content_addressable", e.ChecksumType, e.Checksum)
+		dataFilePath := filepath.Join(fileDir, "file")
+		if err := os.MkdirAll(fileDir, 0777); err != nil {
+			return fmt.Errorf("error making dir %q: %w", fileDir, err)
+		}
+		if err := os.WriteFile(dataFilePath, e.Contents, 0666); err != nil {
+			return fmt.Errorf("error making cache entry %q: %w", dataFilePath, err)
+		}
+		fmt.Fprintf(os.Stderr, "wrote cache entry %q\n", dataFilePath)
+	}
+	return nil
 }
 
 func extractTxtar(dir, txt string) error {

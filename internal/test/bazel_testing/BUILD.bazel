@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "bazel_testing",
-    srcs = ["bazel_testing.go"],
+    srcs = [
+        "bazel_testing.go",
+        "bazel_testing_cache.go",
+    ],
     importpath = "github.com/gonzojive/bazelgopackagesdriver/internal/test/bazel_testing",
     visibility = ["//:__subpackages__"],
     deps = [

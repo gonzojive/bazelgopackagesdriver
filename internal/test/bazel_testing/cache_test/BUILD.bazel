@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "cache_test_test",
+    srcs = ["cache_test.go"],
+    data = [
+        "@my_filez//:filegroup",
+        "@my_filez2//:filegroup",
+    ],
+    deps = [
+        "//internal/runfiles",
+        "//internal/test/bazel_testing",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)
