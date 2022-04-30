@@ -26,7 +26,7 @@ def _get_basename(url):
   return url[url.rindex("/") + 1:]
 
 def _http_files_impl(repository_ctx):
-  repository_ctx.file("manifest.json", json.encode_indent(
+  repository_ctx.file("cache_manifest.json", json.encode_indent(
       {
           "DownloadedFiles": [
               {
@@ -45,7 +45,7 @@ def _http_files_impl(repository_ctx):
       "filegroup(",
       "    name = \"%s\"," % filegroup_name,
       "    srcs = [",
-      "      \"manifest.json\",",
+      "      \"cache_manifest.json\",",
   ]
 
   for sha256 in repository_ctx.attr.srcs:

@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bazellogs",
+    srcs = ["bazellogs_workspace.go"],
+    importpath = "github.com/gonzojive/bazelgopackagesdriver/internal/test/bazel_testing/bazellogs",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//proto/bazelworkspacelogpb",
+        "@com_github_matttproud_golang_protobuf_extensions//pbutil",
+    ],
+)

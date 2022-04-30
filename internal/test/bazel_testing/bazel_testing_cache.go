@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// Code related to the http_files rule for setting up a set of cached files.
+
 // LoadCacheManifest returns a cache manifest that can be used to instantiate a
 // content-addressable cache for bazel.
 //
@@ -27,8 +29,6 @@ func LoadCacheManifest(manifestPath string) (*CacheManifest, error) {
 	}
 	return got, nil
 }
-
-// Code related to the http_files rule for setting up a set of cached files.
 
 // CacheManifest describes the output of an http_files workspace rule.
 //

@@ -4,7 +4,7 @@ workspace(
     name = "bazelgopackagesdriver",
 )
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 ### rules_go: https://github.com/bazelbuild/rules_go
@@ -590,6 +590,13 @@ http_archive(
     urls = ["https://github.com/phst/runfiles/archive/f8065aa0cb28b5cc0fffa7d0b5e9ea1a92add4bb.zip"],
 )
 
+go_repository(
+    name = "com_github_matttproud_golang_protobuf_extensions",
+    importpath = "github.com/matttproud/golang_protobuf_extensions",
+    sum = "h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=",
+    version = "v1.0.1",
+)
+
 register_toolchains("@build_stack_rules_proto//toolchain:standard")
 
 load("@build_stack_rules_proto//deps:core_deps.bzl", "core_deps")
@@ -638,8 +645,6 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
 bazel_skylib_workspace()
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
-
 # Download the linux binary for bazel. This is loaded by the test.
 #
 # See https://bazel.build/rules/lib/repo/http#http_file
@@ -683,18 +688,57 @@ http_files(
 )
 
 http_files(
-    name = "my_filez2",
+    name = "bazel_cache_for_integration_tests",
     srcs = {
-        "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c": [
-            "https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-linux-x86_64",
+"f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c": [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+        ],
+        "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728": [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
+        ],
+        "379113459b0feaf6bfbb584a91874c065078aa673222846ac765f86661c27407": [
+            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.5/platforms-0.0.5.tar.gz",
+            "https://github.com/bazelbuild/platforms/releases/download/0.0.5/platforms-0.0.5.tar.gz",
+        ],
+        "9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6": [
+            "https://dl.google.com/go/go1.17.9.linux-amd64.tar.gz",
+        ],
+        "bc81f1ba47ef5cc68ad32225c3d0e70b8c6f6077663835438da8d5733f917598": [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_java/archive/7cf3cefd652008d0a64a419c34c13bdca6c8f178.zip",
+            "https://github.com/bazelbuild/rules_java/archive/7cf3cefd652008d0a64a419c34c13bdca6c8f178.zip",
+        ],
+        "cd14f1cb4559e4723e63b7e7b06d09fcc3bd7ba58d03f354cdff1439bd936a7d": [
+            "https://mirror.bazel.build/bazel_coverage_output_generator/releases/coverage_output_generator-v2.5.zip",
+        ],
+        "d0c573b94a6ef20ef6ff20154a23d0efcb409fb0e1ff0979cec318dfe42f0cdd": [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_cc/archive/b1c40e1de81913a3c40e5948f78719c28152486d.zip",
+            "https://github.com/bazelbuild/rules_cc/archive/b1c40e1de81913a3c40e5948f78719c28152486d.zip",
+        ],
+        "a7ac5922ee01e8b8fcb546ffc264ef314d0a0c679328b7fa4c432e5f54a86067": [
+            "https://mirror.bazel.build/bazel_java_tools/releases/java/v11.6/java_tools-v11.6.zip",
+            "https://github.com/bazelbuild/java_tools/releases/download/java_v11.6/java_tools-v11.6.zip",
+        ],
+        "8e7d59a5b12b233be5652e3d29f42fba01c7cbab09f6b3a8d0a57ed6d1e9a0da": [
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_proto/archive/7e4afce6fe62dbff0a4a03450143146f9f2d7488.tar.gz",
+            "https://github.com/bazelbuild/rules_proto/archive/7e4afce6fe62dbff0a4a03450143146f9f2d7488.tar.gz",
+        ],
+        "15da4f84a7d39cd179acf3035d9def638eea6ba89a0ed8f4e8a8e6e1d6c8e328": [
+            "https://mirror.bazel.build/bazel_java_tools/releases/java/v11.6/java_tools_linux-v11.6.zip",
+            "https://github.com/bazelbuild/java_tools/releases/download/java_v11.6/java_tools_linux-v11.6.zip",
+        ],
+        "b8e8a63b79bc312aa90f3558edbea59e71495ef1a9c340e38900dd28a1c579f3": [
+            "https://mirror.bazel.build/openjdk/azul-zulu11.50.19-ca-jdk11.0.12/zulu11.50.19-ca-jdk11.0.12-linux_x64.tar.gz",
         ],
     },
 )
 
-# local_repository(
-#     name = "io_bazel",
-#     path = "/home/red/code/bazel",
-# )
+
+local_repository(
+    name = "io_bazel",
+    path = "/home/red/code/bazel",
+)
 
 # load("@io_bazel//:workspace.bzl", "bazel_deps")
 # load("@io_bazel//:workspace_loads.bzl", "bazel_deps2")

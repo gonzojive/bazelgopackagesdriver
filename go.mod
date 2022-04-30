@@ -4,7 +4,7 @@ go 1.18
 
 require golang.org/x/tools v0.1.10
 
-require github.com/phst/runfiles v0.0.0-20220326201552-61ddb5beae0a
+require github.com/matttproud/golang_protobuf_extensions v1.0.1
 
 require (
 	github.com/bazelbuild/rules_go v0.31.0

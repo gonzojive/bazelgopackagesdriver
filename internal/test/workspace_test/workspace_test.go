@@ -32,23 +32,26 @@ const (
 )
 
 func TestMain(m *testing.M) {
-	cacheEntry, err := runfiles.Runfile("external/io_bazel_rules_go_zip/file/integration_testing_cache_entry")
-	if err != nil {
-		panic(err)
-	}
-	contents, err := ioutil.ReadFile(cacheEntry)
-	if err != nil {
-		panic(fmt.Errorf("error reading %q: %w", err))
-	}
+	// cacheEntry, err := runfiles.Runfile("external/io_bazel_rules_go_zip/file/integration_testing_cache_entry")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// contents, err := ioutil.ReadFile(cacheEntry)
+	// if err != nil {
+	// 	panic(fmt.Errorf("error reading %q: %w", err))
+	// }
 	bazel_testing.TestMain(m, bazel_testing.Args{
-		CacheEntries: []bazel_testing.CacheEntry{
-			{
-				ChecksumType: "sha256",
-				Checksum:     "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
-				//Contents:     ([]byte)("bad data"),
-				Contents: contents,
-			},
+		CacheManifestPaths: []string{
+			"external/bazel_cache_for_integration_tests/cache_manifest.json",
 		},
+		// CacheEntries: []bazel_testing.CacheEntry{
+		// 	{
+		// 		ChecksumType: "sha256",
+		// 		Checksum:     "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
+		// 		//Contents:     ([]byte)("bad data"),
+		// 		Contents: contents,
+		// 	},
+		// },
 		Main: `
 -- WORKSPACE --
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -61,12 +64,23 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_download_sdk", "go_register_toolchains", "go_rules_dependencies")
+
+go_download_sdk(
+    name = "go_sdk",
+    version = "1.17.9",
+	sdks = {
+		# Derived from contents of
+		# https://go.dev/dl/?mode=json&include=all
+		"linux_amd64": ["go1.17.9.linux-amd64.tar.gz", "9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6"],
+	},
+)
 
 go_rules_dependencies()
 
 # Bug in rules_go for 1.18: https://github.com/bazelbuild/rules_go/issues/3110
-go_register_toolchains(version = "1.17")
+#go_register_toolchains(version = "1.17")
+go_register_toolchains()
 
 -- BUILD.bazel --
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
@@ -114,6 +128,7 @@ func Foo() int { return 0 }
 }
 
 func TestFunctionalWorkspace(t *testing.T) {
+	defer bazel_testing.PrintDiagnostics("TestFunctionalWorkspace")
 	if err := bazel_testing.RunBazel("test", "//:example_test", "--test_runner_fail_fast"); err == nil {
 		t.Fatal("got success; want failure")
 	} else if bErr, ok := err.(*bazel_testing.StderrExitError); !ok {

@@ -14,7 +14,7 @@ func TestManifest(t *testing.T) {
 		want     *bazel_testing.CacheManifest
 	}{
 		{
-			"external/my_filez/manifest.json",
+			"external/my_filez/cache_manifest.json",
 			&bazel_testing.CacheManifest{
 				DownloadedFiles: []*bazel_testing.DownloadedFile{
 					{
