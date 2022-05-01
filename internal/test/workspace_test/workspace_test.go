@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gonzojive/bazelgopackagesdriver/internal/runfiles"
 	"github.com/gonzojive/bazelgopackagesdriver/internal/test/bazel_testing" // forked from "github.com/bazelbuild/rules_go/go/tools/bazel_testing"
+	"github.com/google/go-cmp/cmp"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -32,6 +34,10 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	bazelBin, err := runfiles.Runfile(bazelBinRunfilesPath)
+	if err != nil {
+		log.Fatalf("error locating bazel binary: %v", err)
+	}
 	// cacheEntry, err := runfiles.Runfile("external/io_bazel_rules_go_zip/file/integration_testing_cache_entry")
 	// if err != nil {
 	// 	panic(err)
@@ -41,6 +47,7 @@ func TestMain(m *testing.M) {
 	// 	panic(fmt.Errorf("error reading %q: %w", err))
 	// }
 	bazel_testing.TestMain(m, bazel_testing.Args{
+		BazelBin: bazelBin,
 		CacheManifestPaths: []string{
 			"external/bazel_cache_for_integration_tests/cache_manifest.json",
 		},
@@ -127,27 +134,6 @@ func Foo() int { return 0 }
 	})
 }
 
-func TestFunctionalWorkspace(t *testing.T) {
-	defer bazel_testing.PrintDiagnostics("TestFunctionalWorkspace")
-	if err := bazel_testing.RunBazel("test", "//:example_test", "--test_runner_fail_fast"); err == nil {
-		t.Fatal("got success; want failure")
-	} else if bErr, ok := err.(*bazel_testing.StderrExitError); !ok {
-		t.Fatalf("got %v; want StderrExitError", err)
-	} else if code := bErr.Err.ExitCode(); code != 3 {
-		t.Fatalf("got code %d; want code 3: %v", code, err)
-	}
-
-	logPath := filepath.FromSlash("bazel-testlogs/example_test/test.log")
-	logData, err := ioutil.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Contains(logData, []byte("TestShouldFail")) {
-		t.Fatalf("test log does not contain 'TestShouldFail': %q", logData)
-	}
-}
-
 func TestPackagesLoad(t *testing.T) {
 	cmd := bazel_testing.BazelCmd()
 	driver, err := runfiles.Runfile(driverRunfilesPath)
@@ -188,7 +174,78 @@ func TestPackagesLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load packages: %v", err)
 	}
-	t.Errorf("got %v packages", packages)
+	got := mapFn(packages, makeComparablePackage)
+	want := []comparablePackage{
+		{
+			ID:      "//:example_test",
+			Name:    "test_fail_fast",
+			PkgPath: "example_test_test",
+			GoFiles: []string{},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected packages.Load result (-want, +got):\n  %s", diff)
+	}
+}
+
+func TestFunctionalWorkspace(t *testing.T) {
+	if err := bazel_testing.RunBazel("test", "//:example_test", "--test_runner_fail_fast"); err == nil {
+		t.Fatal("got success; want failure")
+	} else if bErr, ok := err.(*bazel_testing.StderrExitError); !ok {
+		t.Fatalf("got %v; want StderrExitError", err)
+	} else if code := bErr.Err.ExitCode(); code != 3 {
+		t.Fatalf("got code %d; want code 3: %v", code, err)
+	}
+
+	logPath := filepath.FromSlash("bazel-testlogs/example_test/test.log")
+	logData, err := ioutil.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Contains(logData, []byte("TestShouldFail")) {
+		t.Fatalf("test log does not contain 'TestShouldFail': %q", logData)
+	}
+}
+
+type comparablePackage struct {
+	// ID is a unique identifier for a package,
+	// in a syntax provided by the underlying build system.
+	//
+	// Because the syntax varies based on the build system,
+	// clients should treat IDs as opaque and not attempt to
+	// interpret them.
+	ID string
+
+	// Name is the package name as it appears in the package source code.
+	Name string
+
+	// PkgPath is the package path as used by the go/types package.
+	PkgPath string
+
+	// GoFiles lists the absolute file paths of the package's Go source files.
+	GoFiles []string
+
+	// HasTypesInfo is true if TypesInfo != nil.
+	HasTypesInfo bool
+
+	// TypesCount is the length of the Types map.
+	TypesCount int
+}
+
+func makeComparablePackage(p *packages.Package) comparablePackage {
+	typesCount := 0
+	if p.TypesInfo != nil {
+		typesCount = len(p.TypesInfo.Types)
+	}
+	return comparablePackage{
+		ID:           p.ID,
+		Name:         p.Name,
+		PkgPath:      p.PkgPath,
+		GoFiles:      p.GoFiles,
+		HasTypesInfo: p.TypesInfo != nil,
+		TypesCount:   typesCount,
+	}
 }
 
 func must[T any](t T, err error) T {
@@ -196,4 +253,12 @@ func must[T any](t T, err error) T {
 		panic(err)
 	}
 	return t
+}
+
+func mapFn[T, U any](slice []T, fn func(T) U) []U {
+	var out []U
+	for _, t := range slice {
+		out = append(out, fn(t))
+	}
+	return out
 }

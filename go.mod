@@ -4,7 +4,10 @@ go 1.18
 
 require golang.org/x/tools v0.1.10
 
-require github.com/matttproud/golang_protobuf_extensions v1.0.1
+require (
+	github.com/fsnotify/fsnotify v1.4.9
+	github.com/matttproud/golang_protobuf_extensions v1.0.1
+)
 
 require (
 	github.com/bazelbuild/rules_go v0.31.0
